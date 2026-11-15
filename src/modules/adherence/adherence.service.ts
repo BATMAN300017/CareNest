@@ -302,6 +302,22 @@ export class AdherenceService {
     const confirmedAtUtc = new Date();
 
     const result = await prisma.$transaction(async (tx) => {
+      // Re-verify inside atomic transaction to prevent concurrent double-confirmations
+      if (tx.doseOccurrence?.findUnique) {
+        const current = await tx.doseOccurrence.findUnique({
+          where: { id: doseId },
+          select: { status: true },
+        });
+
+        if (current?.status === "TAKEN") {
+          throw new AppError(
+            "This dose has already been recorded as taken.",
+            409,
+            ErrorCode.DOSE_ALREADY_TAKEN
+          );
+        }
+      }
+
       // 1. Update dose occurrence status
       const updatedDose = await tx.doseOccurrence.update({
         where: { id: doseId },

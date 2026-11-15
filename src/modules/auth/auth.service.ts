@@ -25,6 +25,14 @@ export class AuthService {
    * Registers a new user account with privilege escalation protection.
    */
   static async registerUser(input: RegisterUserInput) {
+    // 0. Enforce rate limiting on public registration
+    const rateLimitKey = `register:${input.phoneNumber}`;
+    checkRateLimit(rateLimitKey, {
+      windowMs: 15 * 60 * 1000,
+      maxRequests: 5,
+      message: "Too many registration attempts. Please try again after 15 minutes.",
+    });
+
     // 1. Prevent privilege escalation
     if ((input.systemRole as string) === "SUPER_ADMIN") {
       throw new AppError(

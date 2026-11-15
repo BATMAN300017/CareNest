@@ -2,17 +2,25 @@ import { NextRequest } from "next/server";
 import { handleApiRoute } from "@/core/utils/api-handler";
 import { authenticateRequest } from "@/core/middleware/auth-guard";
 import { prisma } from "@/core/database/prisma";
+import { checkRateLimit } from "@/core/security/rate-limiter";
 import { NotificationDispatcherService } from "@/modules/notifications/notification-dispatcher.service";
 
 export const POST = handleApiRoute(
   async (request: NextRequest, { params }: { params: { patientId: string } }) => {
-    // Note: in emergency SOS, allow authenticated patient, family member, or bypass in test
+    // 1. Enforce Rate Limiting on emergency triggers (max 5 alerts per minute per patient)
+    checkRateLimit(`emergency_sos:${params.patientId}`, {
+      windowMs: 60 * 1000,
+      maxRequests: 5,
+      message: "Emergency SOS requests rate limited. If this is an immediate life-threatening emergency, please dial emergency services (911) directly.",
+    });
+
+    // 2. Identify caller
     let callerUserId: string | null = null;
     try {
       const user = await authenticateRequest(request);
       callerUserId = user.sub;
     } catch (e) {
-      // In offline/demo mode, proceed gracefully
+      // In offline/demo mode, proceed gracefully to ensure elderly safety
     }
 
     const patient = await prisma.patient.findUnique({

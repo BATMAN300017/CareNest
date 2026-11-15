@@ -33,22 +33,31 @@ export class DoseScheduler {
         data: { status: "DUE_NOW" },
       });
 
-      // Create in-app reminder notification
-      const notif = await prisma.notification.create({
-        data: {
-          patientId: dose.patientId,
-          recipientUserId: dose.patient.userId || dose.patientId,
-          eventType: "UPCOMING_MEDICATION",
-          channel: "IN_APP",
-          title: `Time for ${dose.medication.brandName}`,
-          body: `Please take ${dose.medication.strength} of ${dose.medication.brandName} (${dose.medication.instructions}).`,
-          status: "QUEUED",
+      // Create in-app reminder notification (with duplicate prevention check)
+      const existingNotif = await prisma.notification.findFirst({
+        where: {
           referenceId: dose.id,
-          scheduledForUtc: dose.scheduledForUtc,
+          eventType: "UPCOMING_MEDICATION",
         },
       });
 
-      NotificationDispatcherService.dispatch(notif.id).catch(() => {});
+      if (!existingNotif) {
+        const notif = await prisma.notification.create({
+          data: {
+            patientId: dose.patientId,
+            recipientUserId: dose.patient.userId || dose.patientId,
+            eventType: "UPCOMING_MEDICATION",
+            channel: "IN_APP",
+            title: `Time for ${dose.medication.brandName}`,
+            body: `Please take ${dose.medication.strength} of ${dose.medication.brandName} (${dose.medication.instructions}).`,
+            status: "QUEUED",
+            referenceId: dose.id,
+            scheduledForUtc: dose.scheduledForUtc,
+          },
+        });
+
+        NotificationDispatcherService.dispatch(notif.id).catch(() => {});
+      }
       transitioned.push(updated);
     }
 

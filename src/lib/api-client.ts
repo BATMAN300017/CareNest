@@ -16,6 +16,14 @@ export async function apiClient<T = any>(
   const { params, headers: customHeaders, ...fetchOptions } = options;
 
   let url = endpoint;
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    const base =
+      typeof window !== "undefined" && window.location?.origin
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    url = `${base.replace(/\/$/, "")}/${endpoint.replace(/^\//, "")}`;
+  }
+
   if (params) {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -35,7 +43,7 @@ export async function apiClient<T = any>(
   };
 
   // Attach JWT token from client storage if available
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && window.localStorage) {
     const token = localStorage.getItem("carenest_token");
     if (token && !headers["Authorization"]) {
       headers["Authorization"] = `Bearer ${token}`;
@@ -66,8 +74,7 @@ export async function apiClient<T = any>(
       `HTTP Error ${response.status}: ${response.statusText}`;
 
     // Handle token expiration
-    if (response.status === 401 && typeof window !== "undefined") {
-      // Clear token if expired
+    if (response.status === 401 && typeof window !== "undefined" && window.localStorage) {
       localStorage.removeItem("carenest_token");
       localStorage.removeItem("carenest_user");
     }
