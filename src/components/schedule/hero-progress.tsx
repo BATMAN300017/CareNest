@@ -28,30 +28,45 @@ export function HeroProgress({
   return (
     <section className="mb-8 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 p-5 sm:p-7 warm-card-shadow flex flex-col md:flex-row items-center justify-between gap-6">
       <div className="flex items-center gap-6 w-full md:w-auto">
-        {/* Circular Progress Ring */}
-        <div className="relative w-24 h-24 flex-shrink-0 flex items-center justify-center">
-          <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 96 96">
+        {/* Circular Progress Ring with Strict Defensive Sizing & Fills */}
+        <div
+          className="relative w-24 h-24 flex-shrink-0 flex items-center justify-center"
+          style={{ width: "96px", height: "96px", minWidth: "96px", minHeight: "96px" }}
+        >
+          <svg
+            className="w-24 h-24 transform -rotate-90"
+            viewBox="0 0 96 96"
+            width="96"
+            height="96"
+            style={{ width: "96px", height: "96px", transform: "rotate(-90deg)" }}
+          >
+            {/* Background Track Circle: fill explicitly none, light container stroke */}
             <circle
               className="text-surface-container fill-none"
               cx="48"
               cy="48"
               r="40"
+              fill="none"
               stroke="currentColor"
               strokeWidth="10"
+              style={{ fill: "none" }}
             />
+            {/* Dynamic Progress Circle: fill explicitly none, primary brand stroke */}
             <circle
               className="text-primary fill-none transition-all duration-1000 ease-out"
               cx="48"
               cy="48"
               r="40"
+              fill="none"
               stroke="currentColor"
               strokeDasharray={strokeDasharray}
               strokeDashoffset={strokeDashoffset}
               strokeLinecap="round"
               strokeWidth="10"
+              style={{ fill: "none" }}
             />
           </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
             <span className="font-headline text-xl sm:text-2xl font-bold text-primary">
               {completed} / {total}
             </span>

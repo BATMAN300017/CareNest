@@ -12,50 +12,82 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // CareNest Canonical Color Palette (from DESIGN.md)
+        // Primary - Deep Sage Brand CTA
         primary: {
-          DEFAULT: "#00523C", // Deep Sage Primary CTA & Brand
+          DEFAULT: "#00523C",
           container: "#1E6B52",
           fixed: "#A7F2D2",
           "fixed-dim": "#8CD5B7",
         },
+        "primary-container": "#1E6B52",
+        "primary-fixed": "#A7F2D2",
+        "primary-fixed-dim": "#8CD5B7",
         "on-primary": {
           DEFAULT: "#FFFFFF",
+          container: "#9EE9C9",
           fixed: "#002116",
           "fixed-variant": "#00513B",
         },
+        "on-primary-container": "#9EE9C9",
+        "on-primary-fixed": "#002116",
+        "on-primary-fixed-variant": "#00513B",
+        "inverse-primary": "#8CD5B7",
+
+        // Secondary - Trust Navy
         secondary: {
-          DEFAULT: "#455F87", // Trust Navy
+          DEFAULT: "#455F87",
           container: "#B5D0FD",
           fixed: "#D5E3FF",
           "fixed-dim": "#ADC8F5",
         },
+        "secondary-container": "#B5D0FD",
+        "secondary-fixed": "#D5E3FF",
+        "secondary-fixed-dim": "#ADC8F5",
         "on-secondary": {
           DEFAULT: "#FFFFFF",
+          container: "#3E5980",
           fixed: "#001C3B",
           "fixed-variant": "#2D486D",
         },
+        "on-secondary-container": "#3E5980",
+        "on-secondary-fixed": "#001C3B",
+        "on-secondary-fixed-variant": "#2D486D",
+
+        // Tertiary - Warm Amber Warning & Due Now
         tertiary: {
-          DEFAULT: "#6E3900", // Warm Amber Warning / Due Now
+          DEFAULT: "#6E3900",
           container: "#914D00",
           fixed: "#FFDCC3",
           "fixed-dim": "#FFB77D",
         },
+        "tertiary-container": "#914D00",
+        "tertiary-fixed": "#FFDCC3",
+        "tertiary-fixed-dim": "#FFB77D",
         "on-tertiary": {
           DEFAULT: "#FFFFFF",
+          container: "#FFD0AD",
           fixed: "#2F1500",
           "fixed-variant": "#6E3900",
         },
+        "on-tertiary-container": "#FFD0AD",
+        "on-tertiary-fixed": "#2F1500",
+        "on-tertiary-fixed-variant": "#6E3900",
+
+        // Error - Urgent SOS & Alert Red
         error: {
-          DEFAULT: "#BA1A1A", // Urgent Rose / Missed Dose / SOS
+          DEFAULT: "#BA1A1A",
           container: "#FFDAD6",
         },
+        "error-container": "#FFDAD6",
         "on-error": {
           DEFAULT: "#FFFFFF",
           container: "#93000A",
         },
+        "on-error-container": "#93000A",
+
+        // Surfaces - Tactile Warmth
         surface: {
-          DEFAULT: "#F6FAFF", // Soft Canvas Base
+          DEFAULT: "#F6FAFF",
           dim: "#D2DBE4",
           bright: "#F6FAFF",
           container: "#E6EFF8",
@@ -66,16 +98,33 @@ const config: Config = {
           variant: "#DAE4ED",
           tint: "#1D6A51",
         },
+        "surface-dim": "#D2DBE4",
+        "surface-bright": "#F6FAFF",
+        "surface-container": "#E6EFF8",
+        "surface-container-low": "#EBF5FE",
+        "surface-container-lowest": "#FFFFFF",
+        "surface-container-high": "#E0E9F2",
+        "surface-container-highest": "#DAE4ED",
+        "surface-variant": "#DAE4ED",
+        "surface-tint": "#1D6A51",
+        "inverse-surface": "#293138",
+        "inverse-on-surface": "#E9F2FB",
+
+        // Text & Background
         "on-surface": {
-          DEFAULT: "#141D23", // Deep Warm Slate (reduces senior eye glare)
+          DEFAULT: "#141D23",
           variant: "#3F4944",
         },
+        "on-surface-variant": "#3F4944",
+        background: "#F6FAFF",
+        "on-background": "#141D23",
+
+        // Outlines & Borders
         outline: {
           DEFAULT: "#6F7974",
           variant: "#BFC9C2",
         },
-        background: "#F6FAFF",
-        "on-background": "#141D23",
+        "outline-variant": "#BFC9C2",
       },
       fontFamily: {
         sans: ["Plus Jakarta Sans", "system-ui", "sans-serif"],
