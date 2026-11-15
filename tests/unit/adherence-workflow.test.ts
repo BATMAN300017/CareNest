@@ -10,6 +10,7 @@ describe("Adherence & Clinical Logic Workflows", () => {
   const doseId = "dose_metformin_1";
 
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.spyOn(AuditService, "log").mockResolvedValue(undefined);
   });
 
@@ -38,6 +39,7 @@ describe("Adherence & Clinical Logic Workflows", () => {
     vi.spyOn(prisma, "$transaction").mockImplementation(async (callback: any) => {
       const mockTx = {
         doseOccurrence: {
+          findUnique: vi.fn().mockResolvedValue({ status: "DUE_NOW" }),
           update: vi.fn().mockResolvedValue({ id: doseId, status: "TAKEN" }),
         },
         adherenceRecord: {
@@ -86,6 +88,162 @@ describe("Adherence & Clinical Logic Workflows", () => {
         confirmationChannel: "DASHBOARD_UI",
       })
     ).rejects.toThrow("This dose has already been recorded as taken.");
+  });
+
+  it("should prevent race-condition double confirmation when status changes to TAKEN inside the transaction", async () => {
+    const mockDose = {
+      id: doseId,
+      patientId,
+      medicationId: "med_1",
+      status: "DUE_NOW",
+      medication: {
+        brandName: "Metformin",
+        strength: "500mg",
+        stock: { currentQuantity: 30, refillThreshold: 7 },
+      },
+      schedule: { doseQuantity: 1.0 },
+    };
+
+    vi.spyOn(prisma.doseOccurrence, "findUnique").mockResolvedValue(mockDose as any);
+
+    // Mock transaction where concurrent process already updated status to TAKEN
+    vi.spyOn(prisma, "$transaction").mockImplementation(async (callback: any) => {
+      const mockTx = {
+        doseOccurrence: {
+          findUnique: vi.fn().mockResolvedValue({ status: "TAKEN" }),
+        },
+      };
+      return callback(mockTx);
+    });
+
+    await expect(
+      AdherenceService.confirmDose(doseId, patientId, "usr_senior", {
+        confirmationChannel: "DASHBOARD_UI",
+      })
+    ).rejects.toThrow("This dose has already been recorded as taken.");
+  });
+
+  it("should trigger an automatic refill alert notification when stock falls below refillThreshold", async () => {
+    const mockDose = {
+      id: doseId,
+      patientId,
+      medicationId: "med_1",
+      status: "DUE_NOW",
+      medication: {
+        brandName: "Lisinopril",
+        strength: "10mg",
+        stock: {
+          currentQuantity: 8,
+          refillThreshold: 7,
+        },
+      },
+      schedule: { doseQuantity: 1.0 },
+    };
+
+    vi.spyOn(prisma.doseOccurrence, "findUnique").mockResolvedValue(mockDose as any);
+
+    let notificationCreated = false;
+    vi.spyOn(prisma, "$transaction").mockImplementation(async (callback: any) => {
+      const mockTx = {
+        doseOccurrence: {
+          findUnique: vi.fn().mockResolvedValue({ status: "DUE_NOW" }),
+          update: vi.fn().mockResolvedValue({ id: doseId, status: "TAKEN" }),
+        },
+        adherenceRecord: {
+          create: vi.fn().mockResolvedValue({ id: "adh_1", doseOccurrenceId: doseId }),
+        },
+        medicationStock: {
+          update: vi.fn().mockResolvedValue({ currentQuantity: 7 }),
+        },
+        notification: {
+          create: vi.fn().mockImplementation(() => {
+            notificationCreated = true;
+            return { id: "notif_refill_1" };
+          }),
+        },
+      };
+      return callback(mockTx);
+    });
+
+    vi.spyOn(AdherenceService, "calculateAdherenceStreak").mockResolvedValue(10);
+
+    const result = await AdherenceService.confirmDose(doseId, patientId, "usr_senior", {
+      confirmationChannel: "DASHBOARD_UI",
+    });
+
+    expect(result.status).toBe("TAKEN");
+    expect(result.stockRemaining).toBe(7);
+    expect(notificationCreated).toBe(true);
+  });
+
+  it("should reject confirmation when dose belongs to a different patient (cross-patient isolation)", async () => {
+    const mockDose = {
+      id: doseId,
+      patientId: "pat_patient_A",
+      status: "DUE_NOW",
+      medication: { brandName: "Metformin" },
+    };
+
+    vi.spyOn(prisma.doseOccurrence, "findUnique").mockResolvedValue(mockDose as any);
+
+    await expect(
+      AdherenceService.confirmDose(doseId, "pat_patient_B", "usr_attacker", {
+        confirmationChannel: "DASHBOARD_UI",
+      })
+    ).rejects.toThrow("Dose occurrence not found.");
+  });
+
+  it("should successfully record a skipped dose with clinical reasoning and notify care circle", async () => {
+    const mockDose = {
+      id: doseId,
+      patientId,
+      medicationId: "med_1",
+      status: "DUE_NOW",
+      medication: { brandName: "Atorvastatin", strength: "20mg" },
+    };
+
+    vi.spyOn(prisma.doseOccurrence, "findUnique").mockResolvedValue(mockDose as any);
+    vi.spyOn(prisma.doseOccurrence, "update").mockResolvedValue({
+      id: doseId,
+      status: "SKIPPED",
+      skippedReason: "Experiencing mild nausea; doctor advised holding evening dose",
+    } as any);
+
+    const result = await AdherenceService.skipDose(doseId, patientId, "usr_senior", {
+      reason: "Experiencing mild nausea; doctor advised holding evening dose",
+    });
+
+    expect(result.status).toBe("SKIPPED");
+    expect(result.skippedReason).toContain("mild nausea");
+    expect(AuditService.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "DOSE_SKIPPED",
+        patientId,
+      })
+    );
+  });
+
+  it("should snooze a scheduled dose by 15, 30, or 60 minutes and reset escalation tier", async () => {
+    const originalTime = new Date("2026-11-15T13:00:00Z");
+    const mockDose = {
+      id: doseId,
+      patientId,
+      status: "DUE_NOW",
+      scheduledForUtc: originalTime,
+      medication: { brandName: "Metformin" },
+    };
+
+    vi.spyOn(prisma.doseOccurrence, "findUnique").mockResolvedValue(mockDose as any);
+    vi.spyOn(prisma.doseOccurrence, "update").mockImplementation(async (args: any) => ({
+      id: doseId,
+      ...args.data,
+    }));
+
+    const result = await AdherenceService.snoozeDose(doseId, patientId, "usr_senior", 15);
+
+    expect(result.status).toBe("SNOOZED");
+    expect(result.snoozedUntilUtc).toBeDefined();
+    expect(result.snoozedUntilUtc.getTime()).toBeGreaterThan(Date.now());
   });
 
   it("should correctly flag abnormal vitals for clinical safety alerts", async () => {

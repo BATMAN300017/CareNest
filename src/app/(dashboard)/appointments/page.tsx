@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { api } from "@/lib/api-client";
 import { AddAppointmentDialog } from "@/components/appointments/add-appointment-dialog";
@@ -75,7 +75,7 @@ export default function AppointmentsPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<AppointmentItem | null>(null);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     try {
       const res = await api.get(`/api/v1/patients/${activePatientId}/appointments`);
       if (Array.isArray(res) && res.length > 0) {
@@ -99,11 +99,11 @@ export default function AppointmentsPage() {
     } catch (e) {
       // Retain verified defaults
     }
-  };
+  }, [activePatientId]);
 
   useEffect(() => {
     fetchAppointments();
-  }, [activePatientId]);
+  }, [fetchAppointments]);
 
   const now = new Date();
 

@@ -184,4 +184,33 @@ describe("Doctor Appointment Management Unit Tests", () => {
       "Invalid appointment ISO datetime format"
     );
   });
+
+  it("should reject appointment creation if doctorId does not exist in registry", async () => {
+    vi.spyOn(prisma.doctor, "findUnique").mockResolvedValue(null);
+
+    await expect(
+      AppointmentService.createAppointment(
+        patientId,
+        {
+          doctorId: "doc_nonexistent",
+          title: "Checkup",
+          appointmentDatetime: new Date(Date.now() + 86400000).toISOString(),
+          locationAddress: "123 Health Ave",
+        },
+        actorId
+      )
+    ).rejects.toThrow("Doctor not found.");
+  });
+
+  it("should reject appointment cancellation if appointment belongs to another patient (cross-patient breach)", async () => {
+    vi.spyOn(prisma.appointment, "findUnique").mockResolvedValue({
+      id: "apt_other",
+      patientId: "pat_different_patient",
+      title: "Cardiac Review",
+    } as any);
+
+    await expect(
+      AppointmentService.cancelAppointment("apt_other", patientId, "Patient request", actorId)
+    ).rejects.toThrow("Appointment not found.");
+  });
 });

@@ -68,6 +68,53 @@ export async function verifyPatientAccess(
     };
   }
 
+  // 3b. Healthcare professional / Doctor clinical consent verification
+  if (actor.role === "HEALTHCARE_PROFESSIONAL") {
+    const consent = await prisma.patientConsent.findFirst({
+      where: {
+        patientId,
+        grantedToUserId: actor.sub,
+      },
+      orderBy: { grantedAt: "desc" },
+    });
+
+    if (!consent) {
+      throw new AppError(
+        "You are not an active member of this patient's Care Circle.",
+        403,
+        ErrorCode.PATIENT_ACCESS_DENIED
+      );
+    }
+
+    if (consent.status === "EXPIRED") {
+      throw new AppError(
+        "Access denied: Clinical consent for this patient has expired.",
+        403,
+        ErrorCode.CONSENT_EXPIRED
+      );
+    }
+
+    if (consent.status !== "GRANTED") {
+      throw new AppError(
+        "Access denied: Clinical consent has been revoked.",
+        403,
+        ErrorCode.CONSENT_REVOKED
+      );
+    }
+
+    return {
+      patientId,
+      isPatientThemselves: false,
+      circleRole: "CLINICIAN",
+      permissions: {
+        canViewVitals: true,
+        canViewRecords: true,
+        canManageMedications: true,
+        canManageAppointments: true,
+      },
+    };
+  }
+
   // 4. Check active Care Circle membership
   const membership = await prisma.careCircleMembership.findUnique({
     where: {

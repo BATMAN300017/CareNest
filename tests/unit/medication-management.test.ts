@@ -312,4 +312,56 @@ describe("Medication Management & Scheduling Unit Tests", () => {
     expect(deleteFilter.status).toBe("PENDING");
     expect(AdherenceService.generateOccurrencesForWindow).toHaveBeenCalled();
   });
+
+  it("should reject stock decrement that would result in negative quantity", async () => {
+    vi.spyOn(prisma.medicationStock, "findUnique").mockResolvedValue({
+      id: "stock_1",
+      medicationId: "med_1",
+      patientId,
+      currentQuantity: 5,
+    } as any);
+
+    await expect(
+      MedicationService.updateMedicationStock(
+        "med_1",
+        patientId,
+        { quantityChange: -10, reason: "Adjustment" },
+        actorId
+      )
+    ).rejects.toThrow("Resulting stock quantity cannot be negative.");
+  });
+
+  it("should deactivate a schedule, delete future pending doses, and log audit event", async () => {
+    vi.spyOn(prisma.medicationSchedule, "findUnique").mockResolvedValue({
+      id: "sched_to_delete",
+      medicationId: "med_1",
+      patientId,
+      isActive: true,
+    } as any);
+
+    let deleteFilter: any = null;
+    vi.spyOn(prisma, "$transaction").mockImplementation(async (callback: any) => {
+      const mockTx = {
+        medicationSchedule: {
+          update: vi.fn().mockResolvedValue({ id: "sched_to_delete", isActive: false }),
+        },
+        doseOccurrence: {
+          deleteMany: vi.fn().mockImplementation((args: any) => {
+            deleteFilter = args.where;
+            return { count: 12 };
+          }),
+        },
+      };
+      return callback(mockTx);
+    });
+
+    const result = await MedicationService.deleteSchedule("sched_to_delete", "med_1", patientId, actorId);
+
+    expect(result.message).toContain("deactivated successfully");
+    expect(deleteFilter.scheduleId).toBe("sched_to_delete");
+    expect(deleteFilter.status).toBe("PENDING");
+    expect(AuditService.log).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "SCHEDULE_DEACTIVATED" })
+    );
+  });
 });

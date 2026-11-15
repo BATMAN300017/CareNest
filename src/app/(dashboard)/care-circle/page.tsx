@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { api } from "@/lib/api-client";
 import { InviteMemberDialog } from "@/components/care-circle/invite-member-dialog";
@@ -112,7 +112,7 @@ export default function CareCirclePage() {
   const [newNoteText, setNewNoteText] = useState("");
   const [isInviteOpen, setIsInviteOpen] = useState(false);
 
-  const fetchCareCircle = async () => {
+  const fetchCareCircle = useCallback(async () => {
     try {
       const res = await api.get(`/api/v1/patients/${activePatientId}/care-circle`);
       if (Array.isArray(res) && res.length > 0) {
@@ -139,11 +139,11 @@ export default function CareCirclePage() {
     } catch (e) {
       // Retain verified defaults
     }
-  };
+  }, [activePatientId]);
 
   useEffect(() => {
     fetchCareCircle();
-  }, [activePatientId]);
+  }, [fetchCareCircle]);
 
   const handlePostNote = (e: React.FormEvent) => {
     e.preventDefault();

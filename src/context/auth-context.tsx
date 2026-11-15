@@ -31,6 +31,31 @@ export interface PatientProfile {
   preferredLanguage?: "en" | "hi";
 }
 
+export interface RegisterPayload {
+  fullName: string;
+  email?: string;
+  phone?: string;
+  phoneNumber?: string;
+  password?: string;
+  role?: string;
+  systemRole?: string;
+  preferredLanguage?: "en" | "hi";
+}
+
+interface AuthApiResponse {
+  user: {
+    id: string;
+    fullName: string;
+    email?: string | null;
+    phoneNumber?: string;
+    systemRole: string;
+    preferredLanguage?: "en" | "hi";
+  };
+  accessToken?: string;
+  token?: string;
+  patient?: PatientProfile;
+}
+
 interface AuthContextType {
   user: User | null;
   currentRole: UserRole;
@@ -44,7 +69,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (payload: any) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<void>;
   logout: () => void;
   setDemoUser: (role: UserRole) => void;
 }
@@ -177,7 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const res = await api.post("/api/v1/auth/login", { email, password });
+      const res = await api.post<AuthApiResponse>("/api/v1/auth/login", { email, password });
       const { user: authedUser, accessToken, patient } = res;
 
       const role: UserRole =
@@ -189,20 +214,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ? "PATIENT"
           : "CAREGIVER";
 
+      const token = accessToken || "";
       const userObj: User = {
         id: authedUser.id,
         fullName: authedUser.fullName,
         email: authedUser.email || email,
         role,
-        primaryPhone: authedUser.phoneNumber,
+        primaryPhone: authedUser.phoneNumber || "",
         preferredLanguage: authedUser.preferredLanguage || "en",
       };
 
       setUser(userObj);
       setCurrentRole(role);
-      setToken(accessToken);
+      setToken(token);
 
-      localStorage.setItem("carenest_token", accessToken);
+      localStorage.setItem("carenest_token", token);
       localStorage.setItem("carenest_user", JSON.stringify(userObj));
       localStorage.setItem("carenest_role", role);
 
@@ -214,11 +240,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (payload: any) => {
+  const register = async (payload: RegisterPayload) => {
     setIsLoading(true);
     try {
-      const res = await api.post("/api/v1/auth/register", payload);
-      const { user: registeredUser, accessToken, patient } = res;
+      const res = await api.post<AuthApiResponse>("/api/v1/auth/register", payload);
+      const { user: registeredUser, accessToken = "", patient } = res;
 
       const role: UserRole =
         registeredUser.systemRole === "HEALTHCARE_PROFESSIONAL"
@@ -230,9 +256,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userObj: User = {
         id: registeredUser.id,
         fullName: registeredUser.fullName,
-        email: registeredUser.email || payload.email,
+        email: registeredUser.email || payload.email || "",
         role,
-        primaryPhone: registeredUser.phoneNumber,
+        primaryPhone: registeredUser.phoneNumber || "",
         preferredLanguage: payload.preferredLanguage || "en",
       };
 

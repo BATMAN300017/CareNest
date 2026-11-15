@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { api } from "@/lib/api-client";
 import { LogVitalDialog } from "@/components/vitals/log-vital-dialog";
@@ -86,7 +86,7 @@ export default function VitalsPage() {
   const [vitals, setVitals] = useState<VitalRecord[]>(DEFAULT_VITALS);
   const [isLogOpen, setIsLogOpen] = useState(false);
 
-  const fetchVitals = async () => {
+  const fetchVitals = useCallback(async () => {
     try {
       const res = await api.get(`/api/v1/patients/${activePatientId}/vitals`);
       if (Array.isArray(res) && res.length > 0) {
@@ -105,11 +105,11 @@ export default function VitalsPage() {
     } catch (e) {
       // Retain verified defaults
     }
-  };
+  }, [activePatientId]);
 
   useEffect(() => {
     fetchVitals();
-  }, [activePatientId]);
+  }, [fetchVitals]);
 
   const bpRecord = vitals.find((v) => v.vitalType === "BLOOD_PRESSURE");
   const glucoseRecord = vitals.find((v) => v.vitalType === "BLOOD_GLUCOSE");

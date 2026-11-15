@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
     try {
       await api.post("/api/v1/auth/forgot-password", { email });
       setIsSent(true);
-    } catch (err: any) {
+    } catch {
       // Show sent state for security / client peace of mind
       setIsSent(true);
     } finally {

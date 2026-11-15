@@ -4,6 +4,7 @@ import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api-client";
+import { getErrorMessage } from "@/core/errors/error-utils";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -35,8 +36,8 @@ function ResetPasswordForm() {
         newPassword: password,
       });
       setIsSuccess(true);
-    } catch (err: any) {
-      setError(err?.message || "Failed to reset password. The link may have expired.");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to reset password. The link may have expired."));
     } finally {
       setIsSubmitting(false);
     }

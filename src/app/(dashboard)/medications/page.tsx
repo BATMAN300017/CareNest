@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { api } from "@/lib/api-client";
 import { AddMedicationDialog } from "@/components/medications/add-medication-dialog";
@@ -111,7 +111,7 @@ export default function MedicationsPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [discontinueTarget, setDiscontinueTarget] = useState<MedicationItem | null>(null);
 
-  const fetchMedications = async () => {
+  const fetchMedications = useCallback(async () => {
     try {
       const res = await api.get(`/api/v1/patients/${activePatientId}/medications`);
       if (Array.isArray(res) && res.length > 0) {
@@ -136,11 +136,11 @@ export default function MedicationsPage() {
     } catch (e) {
       // Retain verified defaults
     }
-  };
+  }, [activePatientId]);
 
   useEffect(() => {
     fetchMedications();
-  }, [activePatientId]);
+  }, [fetchMedications]);
 
   const filteredMeds = medications.filter((m) => {
     const matchesTab = m.status === activeTab;

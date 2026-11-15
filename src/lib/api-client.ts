@@ -1,5 +1,5 @@
 export class ApiError extends Error {
-  constructor(public status: number, message: string, public data?: any) {
+  constructor(public status: number, message: string, public data?: unknown) {
     super(message);
     this.name = "ApiError";
   }
@@ -9,7 +9,7 @@ interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
 }
 
-export async function apiClient<T = any>(
+export async function apiClient<T = unknown>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
@@ -59,7 +59,7 @@ export async function apiClient<T = any>(
     return {} as T;
   }
 
-  let data: any;
+  let data: unknown;
   const contentType = response.headers.get("content-type");
   if (contentType && contentType.includes("application/json")) {
     data = await response.json();
@@ -68,9 +68,10 @@ export async function apiClient<T = any>(
   }
 
   if (!response.ok) {
+    const record = data && typeof data === "object" ? (data as Record<string, unknown>) : null;
     const errorMessage =
-      (data && typeof data === "object" && data.error) ||
-      (data && typeof data === "object" && data.message) ||
+      (record && typeof record.error === "string" && record.error) ||
+      (record && typeof record.message === "string" && record.message) ||
       `HTTP Error ${response.status}: ${response.statusText}`;
 
     // Handle token expiration
@@ -84,37 +85,37 @@ export async function apiClient<T = any>(
 
   // Handle standard { success: true, data: ... } wrapped payloads
   if (data && typeof data === "object" && "data" in data) {
-    return data.data as T;
+    return (data as { data: T }).data;
   }
 
   return data as T;
 }
 
 export const api = {
-  get: <T = any>(url: string, params?: Record<string, any>, options?: RequestInit) =>
+  get: <T = unknown>(url: string, params?: Record<string, string | number | boolean | undefined>, options?: RequestInit) =>
     apiClient<T>(url, { method: "GET", params, ...options }),
 
-  post: <T = any>(url: string, body?: any, options?: RequestInit) =>
+  post: <T = unknown>(url: string, body?: unknown, options?: RequestInit) =>
     apiClient<T>(url, {
       method: "POST",
       body: body ? JSON.stringify(body) : undefined,
       ...options,
     }),
 
-  patch: <T = any>(url: string, body?: any, options?: RequestInit) =>
+  patch: <T = unknown>(url: string, body?: unknown, options?: RequestInit) =>
     apiClient<T>(url, {
       method: "PATCH",
       body: body ? JSON.stringify(body) : undefined,
       ...options,
     }),
 
-  put: <T = any>(url: string, body?: any, options?: RequestInit) =>
+  put: <T = unknown>(url: string, body?: unknown, options?: RequestInit) =>
     apiClient<T>(url, {
       method: "PUT",
       body: body ? JSON.stringify(body) : undefined,
       ...options,
     }),
 
-  delete: <T = any>(url: string, options?: RequestInit) =>
+  delete: <T = unknown>(url: string, options?: RequestInit) =>
     apiClient<T>(url, { method: "DELETE", ...options }),
 };

@@ -95,10 +95,10 @@ export function VoiceAssistantModal({
         {/* Helpful Voice Commands */}
         <div className="text-left bg-surface-container rounded-xl p-4 mb-6 text-xs sm:text-sm text-on-surface-variant space-y-1.5">
           <p className="font-bold text-on-surface">Sample voice commands:</p>
-          <p>• "Hey CareNest, mark as taken"</p>
-          <p>• "Read my daily schedule"</p>
-          <p>• "Call Sarah"</p>
-          <p>• "Emergency help"</p>
+          <p>• &quot;Hey CareNest, mark as taken&quot;</p>
+          <p>• &quot;Read my daily schedule&quot;</p>
+          <p>• &quot;Call Sarah&quot;</p>
+          <p>• &quot;Emergency help&quot;</p>
         </div>
 
         {/* Close */}

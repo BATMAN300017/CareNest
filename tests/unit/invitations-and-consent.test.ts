@@ -165,4 +165,55 @@ describe("Care Circle Invitations & Patient Consent Management", () => {
     expect(revoked.status).toBe("REVOKED");
     expect(revokeSpy).toHaveBeenCalled();
   });
+
+  it("should reject joining when invitation code has expired", async () => {
+    vi.spyOn(prisma.invitation, "findUnique").mockResolvedValue({
+      id: "inv_expired",
+      patientId,
+      status: "PENDING",
+      expiresAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // Expired yesterday
+    } as any);
+
+    vi.spyOn(prisma.invitation, "update").mockResolvedValue({
+      id: "inv_expired",
+      status: "EXPIRED",
+    } as any);
+
+    await expect(CareCircleService.joinCareCircle("usr_invitee", "CN-EXPD12")).rejects.toThrow(
+      "This invitation code has expired. Please request a new invite."
+    );
+  });
+
+  it("should reject joining when invitation is already accepted or revoked", async () => {
+    vi.spyOn(prisma.invitation, "findUnique").mockResolvedValue({
+      id: "inv_used",
+      patientId,
+      status: "ACCEPTED",
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+    } as any);
+
+    await expect(CareCircleService.joinCareCircle("usr_invitee", "CN-USED12")).rejects.toThrow(
+      "Invitation has already been accepted."
+    );
+  });
+
+  it("should reject joining when user is already an active member of this Care Circle", async () => {
+    vi.spyOn(prisma.invitation, "findUnique").mockResolvedValue({
+      id: "inv_valid",
+      patientId,
+      status: "PENDING",
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+    } as any);
+
+    vi.spyOn(prisma.careCircleMembership, "findUnique").mockResolvedValue({
+      id: "mem_existing",
+      patientId,
+      userId: "usr_already_member",
+      isActive: true,
+    } as any);
+
+    await expect(CareCircleService.joinCareCircle("usr_already_member", "CN-VALID1")).rejects.toThrow(
+      "You are already an active member of this Care Circle."
+    );
+  });
 });

@@ -139,13 +139,34 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
     speak(headings || "No text available to read.");
   }, [speak]);
 
-  // Speech-to-Text (Voice Assistant)
+  interface SpeechRecognitionEvent {
+  results: Array<Array<{ transcript: string }>>;
+}
+
+interface SpeechRecognitionInstance {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+interface WindowWithSpeech extends Window {
+  SpeechRecognition?: new () => SpeechRecognitionInstance;
+  webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+}
+
+// Speech-to-Text (Voice Assistant)
   const startListening = useCallback(
     (onResult?: (text: string) => void) => {
       if (typeof window === "undefined") return;
 
-      const SpeechRecognition =
-        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const win = window as unknown as WindowWithSpeech;
+      const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
 
       if (!SpeechRecognition) {
         speak("Voice recognition is not supported in this browser.");
@@ -162,11 +183,11 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
           setIsListening(true);
         };
 
-        recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
+          const transcript = event.results[0]?.[0]?.transcript || "";
           setLastSpokenText(transcript);
           setIsListening(false);
-          if (onResult) {
+          if (onResult && transcript) {
             onResult(transcript);
           }
         };

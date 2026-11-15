@@ -7,6 +7,10 @@ import { AppError, ErrorCode } from "../../src/core/errors/app-error";
 describe("Access Control & Patient Consent Guardrails", () => {
   const patientId = "pat_margaret_101";
 
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("should grant access when requesting user is the patient themselves", async () => {
     const mockActor: AuthTokenPayload = {
       sub: "usr_margaret",
@@ -81,6 +85,33 @@ describe("Access Control & Patient Consent Guardrails", () => {
     );
   });
 
+  it("should reject access when caregiver membership is deactivated (isActive: false)", async () => {
+    const mockFormerCaregiver: AuthTokenPayload = {
+      sub: "usr_former_nurse",
+      email: "former@example.com",
+      phoneNumber: "+15552223333",
+      role: "CARETAKER",
+      type: "access",
+    };
+
+    vi.spyOn(prisma.patient, "findUnique").mockResolvedValue({
+      id: patientId,
+      userId: "usr_margaret",
+    } as any);
+
+    vi.spyOn(prisma.careCircleMembership, "findUnique").mockResolvedValue({
+      id: "mem_deactivated",
+      patientId,
+      userId: mockFormerCaregiver.sub,
+      circleRole: "CAREGIVER",
+      isActive: false, // Inactive
+    } as any);
+
+    await expect(verifyPatientAccess(patientId, mockFormerCaregiver)).rejects.toThrow(
+      "You are not an active member of this patient's Care Circle."
+    );
+  });
+
   it("should immediately deny access if patient has revoked consent", async () => {
     const mockCaregiver: AuthTokenPayload = {
       sub: "usr_nurse_elena",
@@ -144,5 +175,85 @@ describe("Access Control & Patient Consent Guardrails", () => {
     ).rejects.toThrow(
       "Permission denied. You do not have permission 'canManageMedications' for this patient."
     );
+  });
+
+  it("should grant access to authorized Doctor with active non-expired clinical consent", async () => {
+    const mockDoctor: AuthTokenPayload = {
+      sub: "usr_dr_chen",
+      email: "dr.chen@metroheart.com",
+      phoneNumber: "+15554321098",
+      role: "HEALTHCARE_PROFESSIONAL",
+      type: "access",
+    };
+
+    vi.spyOn(prisma.patient, "findUnique").mockResolvedValue({
+      id: patientId,
+      userId: "usr_margaret",
+    } as any);
+
+    vi.spyOn(prisma.careCircleMembership, "findUnique").mockResolvedValue(null);
+
+    vi.spyOn(prisma.patientConsent, "findFirst").mockResolvedValue({
+      id: "consent_chen",
+      status: "GRANTED",
+      grantedToUserId: "usr_dr_chen",
+      expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // Valid for 60 days
+      permissions: {
+        canManageMedications: true,
+        canManageAppointments: true,
+        canViewVitals: true,
+        canViewRecords: true,
+      },
+    } as any);
+
+    const access = await verifyPatientAccess(patientId, mockDoctor, "canViewVitals");
+    expect(access.isPatientThemselves).toBe(false);
+    expect(access.patientId).toBe(patientId);
+  });
+
+  it("should reject Doctor when clinical consent has expired", async () => {
+    const mockDoctor: AuthTokenPayload = {
+      sub: "usr_dr_chen",
+      email: "dr.chen@metroheart.com",
+      phoneNumber: "+15554321098",
+      role: "HEALTHCARE_PROFESSIONAL",
+      type: "access",
+    };
+
+    vi.spyOn(prisma.patient, "findUnique").mockResolvedValue({
+      id: patientId,
+      userId: "usr_margaret",
+    } as any);
+
+    vi.spyOn(prisma.careCircleMembership, "findUnique").mockResolvedValue(null);
+
+    vi.spyOn(prisma.patientConsent, "findFirst").mockResolvedValue({
+      id: "consent_expired",
+      status: "EXPIRED",
+      grantedToUserId: "usr_dr_chen",
+    } as any);
+
+    await expect(verifyPatientAccess(patientId, mockDoctor, "canViewVitals")).rejects.toThrow(
+      "Access denied: Clinical consent for this patient has expired."
+    );
+  });
+
+  it("should grant emergency bypass access for SUPER_ADMIN role with platform audit log", async () => {
+    const mockSuperAdmin: AuthTokenPayload = {
+      sub: "usr_sec_admin",
+      email: "security@carenest.app",
+      phoneNumber: "+15559990000",
+      role: "SUPER_ADMIN",
+      type: "access",
+    };
+
+    vi.spyOn(prisma.patient, "findUnique").mockResolvedValue({
+      id: patientId,
+      userId: "usr_margaret",
+    } as any);
+
+    const access = await verifyPatientAccess(patientId, mockSuperAdmin, "canManageMedications");
+    expect(access.circleRole).toBe("SUPER_ADMIN");
+    expect(access.isPatientThemselves).toBe(false);
   });
 });

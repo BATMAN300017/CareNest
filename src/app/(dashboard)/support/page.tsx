@@ -97,7 +97,7 @@ export default function SupportPage() {
       } catch (e) {}
 
       try {
-        const notifRes = await api.get(`/api/v1/patients/${activePatientId}/notifications`);
+        const notifRes = await api.get<{ items?: NotificationItem[] }>(`/api/v1/patients/${activePatientId}/notifications`);
         if (Array.isArray(notifRes?.items) && notifRes.items.length > 0) {
           setNotifications(notifRes.items);
         }

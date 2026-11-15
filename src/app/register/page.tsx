@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { useLanguage } from "@/context/language-context";
+import { getErrorMessage } from "@/core/errors/error-utils";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -35,8 +36,9 @@ export default function RegisterPage() {
         preferredLanguage: language,
       });
       router.push("/schedule");
-    } catch (err: any) {
-      setError(err?.message || (language === "hi" ? "पंजीकरण विफल रहा। कृपया अपनी जानकारी जांचें।" : "Registration failed. Please check your information."));
+    } catch (err: unknown) {
+      const fallback = language === "hi" ? "पंजीकरण विफल रहा। कृपया अपनी जानकारी जांचें।" : "Registration failed. Please check your information.";
+      setError(getErrorMessage(err, fallback));
     }
   };
 

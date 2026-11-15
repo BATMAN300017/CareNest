@@ -13,7 +13,7 @@ describe("Notifications, Multi-Tier Escalation & Appointment Reminders Unit Test
   let mockEmail: MockEmailProvider;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
     mockSms = new MockSmsProvider();
     mockEmail = new MockEmailProvider();
     NotificationDispatcherService.setSmsProvider(mockSms);
@@ -223,5 +223,81 @@ describe("Notifications, Multi-Tier Escalation & Appointment Reminders Unit Test
       where: { referenceId: "apt_101", status: "QUEUED" },
       data: { status: "CANCELLED" },
     });
+  });
+
+  it("should handle overnight quiet hours boundaries crossing midnight (21:00 to 08:00)", () => {
+    const tz = "UTC";
+    const quietStart = "21:00";
+    const quietEnd = "08:00";
+
+    // 20:59 UTC -> Not quiet
+    const time2059 = new Date("2026-11-15T20:59:00Z");
+    expect(QuietHoursService.isQuietHour(time2059, tz, quietStart, quietEnd)).toBe(false);
+
+    // 21:00 UTC -> Quiet hours begins
+    const time2100 = new Date("2026-11-15T21:00:00Z");
+    expect(QuietHoursService.isQuietHour(time2100, tz, quietStart, quietEnd)).toBe(true);
+
+    // 23:30 UTC -> Inside quiet hours
+    const time2330 = new Date("2026-11-15T23:30:00Z");
+    expect(QuietHoursService.isQuietHour(time2330, tz, quietStart, quietEnd)).toBe(true);
+
+    // 04:00 UTC -> Next morning, still inside quiet hours
+    const time0400 = new Date("2026-11-16T04:00:00Z");
+    expect(QuietHoursService.isQuietHour(time0400, tz, quietStart, quietEnd)).toBe(true);
+
+    // 07:59 UTC -> Still inside quiet hours
+    const time0759 = new Date("2026-11-16T07:59:00Z");
+    expect(QuietHoursService.isQuietHour(time0759, tz, quietStart, quietEnd)).toBe(true);
+
+    // 08:00 UTC -> Quiet hours ended
+    const time0800 = new Date("2026-11-16T08:00:00Z");
+    expect(QuietHoursService.isQuietHour(time0800, tz, quietStart, quietEnd)).toBe(false);
+
+    // 14:00 UTC -> Afternoon, not quiet
+    const time1400 = new Date("2026-11-16T14:00:00Z");
+    expect(QuietHoursService.isQuietHour(time1400, tz, quietStart, quietEnd)).toBe(false);
+  });
+
+  it("should record failed attempt and mark notification FAILED when SMS provider encounters an error", async () => {
+    vi.spyOn(prisma.notification, "findUnique").mockResolvedValue({
+      id: "notif_failed_sms",
+      patientId,
+      channel: "SMS",
+      title: "Medication Reminder",
+      body: "Time for Lisinopril 10mg",
+      status: "QUEUED",
+      recipientUser: { phoneNumber: "+15551234567" },
+      patient: { primaryPhone: "+15558889999" },
+    } as any);
+
+    // Simulate SMS provider failure
+    mockSms.sendSms = vi.fn().mockResolvedValue({
+      isSuccessful: false,
+      provider: "TWILIO_SMS",
+      errorMessage: "Destination unroutable or unreachable",
+    });
+
+    const updateSpy = vi.spyOn(prisma.notification, "update").mockResolvedValue({} as any);
+    const attemptSpy = vi.spyOn(prisma.notificationAttempt, "create").mockResolvedValue({} as any);
+
+    const result = await NotificationDispatcherService.dispatch("notif_failed_sms");
+
+    expect(result.isSuccess).toBe(false);
+    expect(updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "notif_failed_sms" },
+        data: expect.objectContaining({ status: "FAILED" }),
+      })
+    );
+    expect(attemptSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          notificationId: "notif_failed_sms",
+          isSuccessful: false,
+          errorMessage: "Destination unroutable or unreachable",
+        }),
+      })
+    );
   });
 });
