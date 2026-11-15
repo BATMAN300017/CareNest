@@ -607,34 +607,99 @@ Standard Success Response Envelope:
 
 ## 6. Telephony Integration & Webhooks (`/api/v1/telephony`)
 
-### 6.1 Twilio Voice Reminder Webhook (Inbound / Outbound Call Handler)
-- **Method / URL**: `POST /api/v1/telephony/voice/remind`
-- **Authentication**: Twilio Signature Verification (`X-Twilio-Signature`).
+### 6.1 Twilio Voice Reminder Webhook
+- **Method / URL**: `POST /api/v1/telephony/voice/remind?patientId=patient_uuid&doseId=dose_uuid`
+- **Authentication**: Twilio Signature Verification (`X-Twilio-Signature`) via HMAC-SHA1.
 - **Purpose**: Generates dynamic TwiML instructions when the patient answers an automated telephone reminder.
 - **Response**: `200 OK (text/xml)`
   ```xml
   <Response>
-    <Gather numDigits="1" action="/api/v1/telephony/voice/handle-keypad?doseId=dose_uuid" method="POST" timeout="10">
+    <Gather numDigits="1" action="/api/v1/telephony/voice/handle-keypad?patientId=patient_uuid&amp;doseId=dose_uuid" method="POST" timeout="8">
       <Say voice="Polly.Joanna" language="en-US">
-        Hello Margaret. This is CareNest. It is time for your afternoon medication: Metformin 500 milligrams with your meal.
-        Press 1 to confirm you have taken it.
-        Press 2 to be reminded in 15 minutes.
-        Press 0 to speak directly with your daughter Sarah.
+        <prosody rate="85%">Hello Margaret. This is your CareNest medication reminder. It is time for your Metformin 500mg. Press 1 if you have taken your dose. Press 2 if you are not taking this dose. Press 3 to be reminded in 15 minutes. Press 4 to speak with your primary caregiver.</prosody>
       </Say>
     </Gather>
-    <Redirect>/api/v1/telephony/voice/no-input?doseId=dose_uuid</Redirect>
+    <Say voice="Polly.Joanna" language="en-US">We did not receive your response. We will check on you again shortly. Goodbye.</Say>
   </Response>
   ```
 
-### 6.2 Handle Keypad Input
-- **Method / URL**: `POST /api/v1/telephony/voice/handle-keypad`
-- **Purpose**: Processes DTMF digit (`1`, `2`, or `0`). If `1`, records adherence and cancels escalation; if `0`, executes `<Dial>` bridging call to primary caretaker.
+### 6.2 Handle Keypad Input (DTMF Processing)
+- **Method / URL**: `POST /api/v1/telephony/voice/handle-keypad?patientId=patient_uuid&doseId=dose_uuid`
+- **Request Body**: `Digits` (`1`, `2`, `3`, or `4`), `CallSid`
+- **Actions**:
+  - `Digits=1`: Dose marked as `TAKEN` via `AdherenceService.confirmDoseTaken(doseId, TAKEN, TELEPHONE_CALL)`. Cancels pending reminders.
+  - `Digits=2`: Call outcome recorded as `DOSE_NOT_TAKEN`.
+  - `Digits=3`: Dose status set to `SNOOZED` for 15 minutes.
+  - `Digits=4`: Emits `<Dial>` to transfer call to primary caregiver phone.
+- **Response**: `200 OK (text/xml)`.
+
+### 6.3 Twilio Call Status Callback
+- **Method / URL**: `POST /api/v1/telephony/voice/status-callback?patientId=patient_uuid&doseId=dose_uuid`
+- **Request Body**: `CallSid`, `CallStatus` (`completed`, `busy`, `no-answer`, `failed`), `CallDuration`
+- **Purpose**: Tracks voice call completion and triggers escalation if call was unanswered or failed.
+- **Response**: `200 OK (application/json)`.
 
 ---
 
-## 7. Emergency SOS & Direct Calling (`/api/v1/patients/:patientId/emergency`)
+## 7. Notification History & Tracking (`/api/v1/patients/:patientId/notifications`)
 
-### 7.1 Trigger Emergency SOS
+### 7.1 List Notifications
+- **Method / URL**: `GET /api/v1/patients/:patientId/notifications`
+- **Permissions**: `can_view_records == true` or Patient.
+- **Query Parameters**:
+  - `channel`: `IN_APP`, `SMS`, `EMAIL`, `TELEPHONE_CALL`
+  - `status`: `QUEUED`, `DELIVERED`, `FAILED`, `CANCELLED`
+  - `eventType`: `MEDICATION_REMINDER`, `MISSED_MEDICATION`, `APPOINTMENT_REMINDER_24H`, etc.
+  - `page`, `limit`
+- **Response**: `200 OK` with paginated notification records.
+
+### 7.2 Mark Notification as Read
+- **Method / URL**: `PATCH /api/v1/patients/:patientId/notifications/:notificationId/read`
+- **Permissions**: Recipient user or Patient.
+- **Response**: `200 OK` with updated `readAtUtc`.
+
+---
+
+## 8. Notification Preferences (`/api/v1/patients/:patientId/notification-preferences`)
+
+### 8.1 Get Notification Preferences
+- **Method / URL**: `GET /api/v1/patients/:patientId/notification-preferences`
+- **Permissions**: `can_manage_profile == true` or Patient.
+- **Response**: `200 OK`
+  ```json
+  {
+    "voiceRemindersEnabled": true,
+    "smsRemindersEnabled": true,
+    "emailRemindersEnabled": false,
+    "voiceSpeed": "SLOW",
+    "quietHoursStart": "21:00",
+    "quietHoursEnd": "08:00",
+    "maxCallAttempts": 3,
+    "callRetryIntervalMinutes": 10,
+    "caregiverEscalationEnabled": true,
+    "appointmentRemindersEnabled": true
+  }
+  ```
+
+### 8.2 Update Notification Preferences
+- **Method / URL**: `PATCH /api/v1/patients/:patientId/notification-preferences`
+- **Permissions**: `can_manage_profile == true` or Patient.
+- **Request Body**:
+  ```json
+  {
+    "voiceSpeed": "SLOW",
+    "quietHoursStart": "22:00",
+    "quietHoursEnd": "07:30",
+    "maxCallAttempts": 2
+  }
+  ```
+- **Response**: `200 OK` with updated patient preferences.
+
+---
+
+## 9. Emergency SOS & Direct Calling (`/api/v1/patients/:patientId/emergency`)
+
+### 9.1 Trigger Emergency SOS
 - **Method / URL**: `POST /api/v1/patients/:patientId/emergency/sos`
 - **Purpose**: Initiates high-priority Care Circle alert cascade:
   1. Sends high-priority push notifications and SMS to all designated emergency contacts.

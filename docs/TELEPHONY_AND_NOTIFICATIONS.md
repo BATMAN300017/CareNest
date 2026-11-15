@@ -2,108 +2,149 @@
 
 ## 1. Provider-Independent Architecture & Hexagonal Ports
 
-CareNest isolates all third-party telecom and email dependencies behind abstract interfaces:
+CareNest isolates all third-party telecom and email dependencies behind clean, swappable interfaces in `src/modules/notifications/interfaces/`:
 
 ```typescript
-// src/modules/telephony/ports/telephony-provider.interface.ts
-export interface OutboundCallOptions {
-  toPhoneNumber: string;
-  patientId: string;
-  doseOccurrenceId?: string;
-  ivrWebhookUrl: string;
-  statusCallbackUrl: string;
-  timeoutSeconds?: number;
+// INotificationProvider
+export interface INotificationProvider {
+  readonly channel: NotificationChannel;
+  send(options: NotificationSendOptions): Promise<NotificationSendResult>;
 }
 
-export interface ITelephonyProvider {
-  initiateOutboundCall(options: OutboundCallOptions): Promise<{ callSid: string }>;
-  sendSMS(to: string, message: string): Promise<{ messageSid: string }>;
-  generateTwiMLResponse(instructions: IVRInstruction[]): string;
+// IVoiceCallProvider
+export interface IVoiceCallProvider {
+  initiateCall(options: VoiceCallOptions): Promise<VoiceCallResult>;
 }
 
-// src/modules/notifications/ports/email-provider.interface.ts
+// ISmsProvider
+export interface ISmsProvider {
+  sendSms(options: SmsOptions): Promise<SmsSendResult>;
+}
+
+// IEmailProvider
 export interface IEmailProvider {
-  sendEmail(options: {
-    to: string;
-    subject: string;
-    templateName: string;
-    templateData: Record<string, any>;
-  }): Promise<{ messageId: string }>;
+  sendEmail(options: EmailOptions): Promise<EmailSendResult>;
 }
 ```
 
+### Supported Providers:
+1. **Twilio Voice (`TwilioVoiceProvider`)**: Initiates outbound automated phone calls, supplies webhook and status-callback URLs, tracks `CallSid`.
+2. **Twilio SMS (`TwilioSmsProvider`)**: Sends medication alerts, appointment reminders, and missed-dose escalation SMS notifications.
+3. **Resend Email (`ResendEmailProvider`)**: Delivers HTML/plain-text reminders, daily schedules, and caregiver escalation notices.
+4. **In-App Provider (`InAppNotificationProvider`)**: Stores notifications in PostgreSQL and creates `NotificationAttempt` records for the real-time dashboard.
+5. **Mock Providers (`MockVoiceProvider`, `MockSmsProvider`, `MockEmailProvider`)**: Used for automated testing and local development when live third-party API credentials are not set.
+
 ---
 
-## 2. Interactive Voice Response (IVR) State Machine
+## 2. Interactive Voice Response (IVR) State Machine & TwiML Builder
 
 When an automated call is answered by an elderly patient, Twilio executes our webhook:
 
 ```
-[Outbound Call Initiated by BullMQ]
-                 │
-                 ▼
-  [Patient Answers: "Hello?"]
-                 │
-                 ▼
-  [TTS Audio: "Hello Margaret. This is CareNest. It is time for your afternoon Metformin 500mg..."]
-                 │
-                 ▼
-  [Gather DTMF (Digit 1, 2, or 0) / Speech Input ("Taken", "Later", "Help")]
-         ├── 1 ("Taken") ──────────► [Atomic DB Transaction: Status TAKEN]
-         │                            [Cancel Escalation Queue]
-         │                            [Play: "Thank you! Have a wonderful afternoon."]
+[DoseScheduler / Worker]
          │
-         ├── 2 ("Later / Snooze") ──► [Update status: SNOOZED for 15m]
-         │                            [Enqueue delayed retry in BullMQ]
-         │                            [Play: "Understood. We will call you in 15 minutes."]
+         ▼
+[Check Quiet Hours & Overlapping Calls]
+         │ (Clear)
+         ▼
+[TelephonyService.initiateMedicationReminderCall]
          │
-         ├── 0 ("Help / Call") ─────► [<Dial> Primary Caretaker Phone (+1-555-SARAH)]
-         │                            [Bridge call directly]
+         ▼
+[Twilio Voice Webhook: POST /api/v1/telephony/voice/remind]
          │
-         └── [No Input / Timeout] ──► [Log: NO_RESPONSE]
-                                      [Trigger Tier 2 Caregiver Escalation]
+         ▼
+[Accessible TwiML with Amazon Polly Joanna TTS]
+         │
+         ▼
+[Gather DTMF Keypad Input (Digits 1 to 4, numDigits=1, timeout=8s)]
+ ├── 1 ("Taken") ──────────► [Atomic DB: DoseStatus = TAKEN, takenAtUtc = Now]
+ │                           [Cancel Pending Reminder Notifications]
+ │                           [Play: "Thank you! We have recorded that your dose was taken."]
+ │
+ ├── 2 ("Not Taken") ──────► [Atomic DB: CallOutcome = DOSE_NOT_TAKEN]
+ │                           [Play: "Understood. Please consult your caregiver or doctor if you have concerns."]
+ │
+ ├── 3 ("Snooze 15m") ─────► [Atomic DB: DoseStatus = SNOOZED, snoozedUntilUtc = +15m]
+ │                           [Play: "Understood. We will remind you again in 15 minutes."]
+ │
+ ├── 4 ("Transfer") ───────► [Query Primary Caregiver Phone]
+ │                           [TwiML <Dial>: Connect patient directly to caregiver phone]
+ │                           [Play: "Connecting you now..."]
+ │
+ └── [Invalid / Timeout] ──► [Play: "We did not receive your input. A caregiver has been notified."]
+                             [Status Callback triggers Tier 2 escalation]
 ```
 
-### Critical Telephony Adherence Rules:
-- **An unanswered call is NEVER counted as taken.**
-- **Voicemail detection (AMD - Answering Machine Detection)**: If machine audio is detected (`AnsweredBy == 'machine_start'`), Twilio does not gather input; instead, it leaves a gentle reminder voicemail and marks the call attempt as `VOICEMAIL_LEFT`, leaving the dose status as `DUE_NOW`.
-- **Speech Recognition Fallback**: Seniors with severe arthritic tremors can speak: *"I took it"* or *"Call Sarah"*, processed via Twilio Speech Recognition with fallback to DTMF digits.
+### Senior Accessibility Telephony Rules:
+- **Amazon Polly Voice**: Configured with `Polly.Joanna` (natural, friendly female voice) and `en-US` language.
+- **Pacing Controls**: Pacing is adjustable per patient via `voiceSpeed` (`SLOW` uses `<prosody rate="85%">` with deliberate pauses, `NORMAL` uses standard pacing).
+- **Phonetic Pronunciation**: Dosages and medications are spoken clearly with natural pauses between instructions:
+  `"Hello Margaret. This is your CareNest medication reminder. It is time for your Metformin 500 milligrams. Instructions: Take with food."`
+- **DTMF Keypad Redundancy**: Seniors do not need complex menus; simple single-digit options (1=Taken, 2=Not Taken, 3=Snooze, 4=Caregiver).
 
 ---
 
-## 3. Asynchronous Job & Worker Architecture (BullMQ)
+## 3. Webhook Signature Security
 
-```mermaid
-graph LR
-    subgraph Schedulers ["Cron Schedulers"]
-        CronDay["Midnight Generator<br/>(Generates Daily Doses)"]
-        CronSweep["Every 1 Minute<br/>(Sweeps Due Doses)"]
-    end
+Twilio webhooks are protected with HMAC-SHA1 signature verification in `src/core/security/webhook-verifier.ts`:
+- Webhook endpoints inspect `X-Twilio-Signature` and validate the incoming request body and URL using Twilio's cryptographic validator.
+- In automated test environments or when `TWILIO_SIGNATURE_BYPASS=true` is set, verification can be cleanly bypassed for integration testing.
 
-    subgraph Queues ["Redis BullMQ Queues"]
-        QRemind["reminders-queue<br/>(15m Lead Reminders)"]
-        QCall["telephony-dispatch-queue<br/>(Voice Call Dispatch)"]
-        QEscal["escalations-queue<br/>(Tiers 1, 2, 3 Timers)"]
-        QMail["email-notifications-queue<br/>(Daily Digest & Alerts)"]
-    end
+---
 
-    subgraph Workers ["Stateless Node.js Workers"]
-        WRemind["Reminder Worker"]
-        WCall["Telephony Worker"]
-        WEscal["Escalation Worker"]
-        WMail["Email Worker"]
-    end
+## 4. Status Callbacks & Call Tracking
 
-    CronDay -->|Enqueue| QRemind
-    CronSweep -->|Enqueue Due| QCall
-    QCall --> WCall -->|Call Twilio| ExternalTwilio[Twilio API]
-    QRemind --> WRemind -->|WebSockets / Push| ClientApp[Client App]
-    QEscal --> WEscal -->|Check Status| Database[(PostgreSQL)]
-    QMail --> WMail -->|Send Emails| ResendAPI[Resend API]
+Twilio posts asynchronous status callbacks to `POST /api/v1/telephony/voice/status-callback`:
+- Supported statuses: `completed`, `busy`, `no-answer`, `failed`, `canceled`.
+- Stores `durationSeconds`, `callOutcome`, and `failureReason` in `VoiceCallRecord`.
+- If an unanswered or busy call reaches the patient's `maxCallAttempts`, the system marks the attempt failed and activates the escalation workflow.
+
+---
+
+## 5. Multi-Tier Missed-Dose Escalation
+
+CareNest runs a continuous background adherence monitor (`DoseScheduler.detectAndEscalateMissedDoses`):
+
+1. **Grace Period**: 30 minutes from scheduled dose time. Doses remain `DUE_NOW`.
+2. **Tier 1 (Automated Voice Call)**:
+   - Evaluated 60+ minutes after scheduled dose time.
+   - Verifies the patient is not currently in Quiet Hours.
+   - Places an automated telephone call to the patient's phone number.
+   - If quiet hours are active, falls back to a quiet in-app/SMS alert.
+3. **Tier 2 (Caregiver SMS Alert)**:
+   - Evaluated 75+ minutes after scheduled dose time (15 minutes after Tier 1).
+   - Identifies the primary caregiver or Family Admin in the patient's Care Circle (`receiveEmergencyAlerts=true`).
+   - Sends an urgent SMS: `"CareNest Alert: Margaret has not confirmed taking Metformin 500mg (scheduled for 12:00 PM). Please check in with them."`
+4. **Tier 3 (Care Circle Broadcast & Permanent Mark)**:
+   - Evaluated 90+ minutes after scheduled dose time.
+   - Dispatches emergency notifications to all active Care Circle members.
+   - Atomically transitions `DoseOccurrence.status` to `MISSED`.
+
+---
+
+## 6. Doctor Appointment Reminders
+
+`AppointmentReminderScheduler.sweepUpcomingAppointmentReminders` scans for upcoming appointments:
+- **24-Hour Reminder**: Sweeps appointments 23 to 25 hours in advance. Sends SMS/In-App to patient with appointment location, doctor name, and transportation details (e.g. `"SilverRide Senior Escort"`).
+- **2-Hour Reminder**: Sweeps appointments 1 to 2.5 hours in advance with urgent travel and preparation reminders.
+- **Duplicate Prevention**: Queries existing notifications for the appointment reference ID and event type before creating duplicates.
+- **Cancellation**: When an appointment is cancelled, `NotificationDispatcherService.cancelPendingNotificationsForAppointment` automatically marks all `QUEUED` reminders as `CANCELLED`.
+
+---
+
+## 7. Configuration & Environment Variables
+
+```env
+# Twilio Telephony & SMS
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+TWILIO_PHONE_NUMBER=+15551234567
+
+# Resend Email
+RESEND_API_KEY=re_xxxxxxxxxxxx
+EMAIL_FROM=CareNest Reminders <reminders@carenest.health>
+
+# App Base URL (used for Twilio webhooks)
+APP_URL=https://app.carenest.health
+TWILIO_SIGNATURE_BYPASS=false
 ```
-
-### Quiet Hours & Retry Policy
-- **Quiet Hours Enforcement**: No automated voice calls or loud SMS notifications are dispatched between `quiet_hours_start` (default 10:00 PM) and `quiet_hours_end` (default 7:00 AM) in the patient's local timezone, unless an explicit Emergency SOS is triggered.
-- **Retry Exponential Backoff**:
-  - Voice Call No Answer: Retry at +10 minutes (maximum 2 retries).
-  - Webhook Delivery Failures: Exponential backoff with jitter ($5s, 30s, 2m, 10m$).

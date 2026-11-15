@@ -1,5 +1,8 @@
 import { prisma } from "../../core/database/prisma";
 import { AdherenceService } from "../../modules/adherence/adherence.service";
+import { NotificationDispatcherService } from "../../modules/notifications/notification-dispatcher.service";
+import { TelephonyService } from "../../modules/telephony/telephony.service";
+import { QuietHoursService } from "../../modules/escalation/quiet-hours";
 
 export class DoseScheduler {
   /**
@@ -31,7 +34,7 @@ export class DoseScheduler {
       });
 
       // Create in-app reminder notification
-      await prisma.notification.create({
+      const notif = await prisma.notification.create({
         data: {
           patientId: dose.patientId,
           recipientUserId: dose.patient.userId || dose.patientId,
@@ -45,6 +48,7 @@ export class DoseScheduler {
         },
       });
 
+      NotificationDispatcherService.dispatch(notif.id).catch(() => {});
       transitioned.push(updated);
     }
 
@@ -79,6 +83,7 @@ export class DoseScheduler {
   /**
    * Evaluates doses that have exceeded their grace period without confirmation.
    * Advances escalation tier or marks as MISSED.
+   * Respects patient quiet hours, maximum retry limits, and caregiver escalation flags.
    * Runs every 5 minutes.
    */
   static async detectAndEscalateMissedDoses(referenceTime: Date = new Date()) {
@@ -110,8 +115,16 @@ export class DoseScheduler {
 
       // Only escalate if past the grace period
       if (overdueMs > 0) {
+        // Quiet hours check
+        const inQuietHours = QuietHoursService.isQuietHour(
+          referenceTime,
+          dose.patient.timezone,
+          dose.patient.quietHoursStart,
+          dose.patient.quietHoursEnd
+        );
+
         if (dose.escalationTier === 0) {
-          // Tier 1: Automated Phone Call to Senior
+          // Tier 1: Automated Phone Call to Senior (if not in quiet hours and voice enabled)
           await prisma.doseOccurrence.update({
             where: { id: dose.id },
             data: {
@@ -120,7 +133,11 @@ export class DoseScheduler {
             },
           });
 
-          await prisma.notification.create({
+          if (!inQuietHours && dose.patient.voiceRemindersEnabled) {
+            await TelephonyService.initiateMedicationReminderCall(dose.patientId, dose.id, 1).catch(() => {});
+          }
+
+          const notif = await prisma.notification.create({
             data: {
               patientId: dose.patientId,
               recipientUserId: dose.patient.userId || dose.patientId,
@@ -133,9 +150,10 @@ export class DoseScheduler {
             },
           });
 
+          NotificationDispatcherService.dispatch(notif.id).catch(() => {});
           escalated.push({ doseId: dose.id, tier: 1 });
         } else if (dose.escalationTier === 1 && overdueMs > 15 * 60 * 1000) {
-          // Tier 2: SMS & Push to Primary Caregiver (after 15 mins of Tier 1 without response)
+          // Tier 2: SMS & In-App alert to Primary Caregiver
           await prisma.doseOccurrence.update({
             where: { id: dose.id },
             data: {
@@ -144,23 +162,27 @@ export class DoseScheduler {
             },
           });
 
-          const primaryCaregiver = dose.patient.careCircleMembers.find(
-            (m) => m.isPrimaryCaregiver || m.circleRole === "FAMILY_ADMIN"
-          );
+          if (dose.patient.caregiverEscalationEnabled) {
+            const primaryCaregiver = dose.patient.careCircleMembers.find(
+              (m) => m.isPrimaryCaregiver || m.circleRole === "FAMILY_ADMIN"
+            );
 
-          if (primaryCaregiver) {
-            await prisma.notification.create({
-              data: {
-                patientId: dose.patientId,
-                recipientUserId: primaryCaregiver.userId,
-                eventType: "ESCALATION_TIER_2",
-                channel: "SMS",
-                title: `CareNest Alert: Missed Dose for ${dose.patient.fullName}`,
-                body: `${dose.patient.fullName} has not confirmed their ${dose.schedule.scheduledTime} dose of ${dose.medication.brandName} (${dose.medication.strength}). Please check in.`,
-                status: "QUEUED",
-                referenceId: dose.id,
-              },
-            });
+            if (primaryCaregiver) {
+              const notif = await prisma.notification.create({
+                data: {
+                  patientId: dose.patientId,
+                  recipientUserId: primaryCaregiver.userId,
+                  eventType: "ESCALATION_TIER_2",
+                  channel: "SMS",
+                  title: `CareNest Alert: Missed Dose for ${dose.patient.fullName}`,
+                  body: `${dose.patient.fullName} has not confirmed their ${dose.schedule.scheduledTime} dose of ${dose.medication.brandName} (${dose.medication.strength}). Please check in.`,
+                  status: "QUEUED",
+                  referenceId: dose.id,
+                },
+              });
+
+              NotificationDispatcherService.dispatch(notif.id).catch(() => {});
+            }
           }
 
           escalated.push({ doseId: dose.id, tier: 2 });
@@ -172,22 +194,29 @@ export class DoseScheduler {
               status: "MISSED",
               escalationTier: 3,
               escalatedAtUtc: referenceTime,
+              skippedReason: "Grace period and multi-tier caregiver escalation elapsed without intake confirmation",
             },
           });
 
-          for (const member of dose.patient.careCircleMembers) {
-            await prisma.notification.create({
-              data: {
-                patientId: dose.patientId,
-                recipientUserId: member.userId,
-                eventType: "ESCALATION_TIER_3",
-                channel: "EMAIL",
-                title: `Missed Dose Confirmed: ${dose.medication.brandName} for ${dose.patient.fullName}`,
-                body: `The scheduled dose of ${dose.medication.brandName} at ${dose.schedule.scheduledTime} was missed. Status logged in adherence record.`,
-                status: "QUEUED",
-                referenceId: dose.id,
-              },
-            });
+          if (dose.patient.caregiverEscalationEnabled) {
+            for (const member of dose.patient.careCircleMembers) {
+              if (member.canManageMedications || member.receiveEmergencyAlerts) {
+                const notif = await prisma.notification.create({
+                  data: {
+                    patientId: dose.patientId,
+                    recipientUserId: member.userId,
+                    eventType: "ESCALATION_TIER_3",
+                    channel: "EMAIL",
+                    title: `Missed Dose Confirmed: ${dose.medication.brandName} for ${dose.patient.fullName}`,
+                    body: `The scheduled dose of ${dose.medication.brandName} at ${dose.schedule.scheduledTime} was missed. Status logged in adherence record.`,
+                    status: "QUEUED",
+                    referenceId: dose.id,
+                  },
+                });
+
+                NotificationDispatcherService.dispatch(notif.id).catch(() => {});
+              }
+            }
           }
 
           escalated.push({ doseId: dose.id, tier: 3, status: "MISSED" });

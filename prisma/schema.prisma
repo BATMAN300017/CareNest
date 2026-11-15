@@ -147,10 +147,13 @@ enum NotificationStatus {
 
 enum CallOutcome {
   DOSE_CONFIRMED
+  DOSE_NOT_TAKEN
   SNOOZE_REQUESTED
   TRANSFERRED_TO_CARETAKER
   NO_RESPONSE_ESCALATED
   VOICEMAIL_DETECTED
+  CALL_FAILED
+  INVALID_RESPONSE
 }
 
 model User {
@@ -210,6 +213,14 @@ model Patient {
   audioReadoutEnabled      Boolean      @default(true) @map("audio_readout_enabled")
   quietHoursStart          String       @default("22:00") @map("quiet_hours_start")
   quietHoursEnd            String       @default("07:00") @map("quiet_hours_end")
+  voiceRemindersEnabled    Boolean      @default(true) @map("voice_reminders_enabled")
+  smsRemindersEnabled      Boolean      @default(true) @map("sms_reminders_enabled")
+  emailRemindersEnabled    Boolean      @default(true) @map("email_reminders_enabled")
+  voiceSpeed               String       @default("NORMAL") @map("voice_speed")
+  maxCallAttempts          Int          @default(3) @map("max_call_attempts")
+  callRetryIntervalMinutes Int          @default(10) @map("call_retry_interval_minutes")
+  caregiverEscalationEnabled Boolean    @default(true) @map("caregiver_escalation_enabled")
+  appointmentRemindersEnabled Boolean   @default(true) @map("appointment_reminders_enabled")
   createdAt                DateTime     @default(now()) @map("created_at")
   updatedAt                DateTime     @updatedAt @map("updated_at")
 
@@ -578,6 +589,9 @@ model Notification {
   status           NotificationStatus  @default(QUEUED)
   referenceId      String?             @map("reference_id")
   scheduledForUtc  DateTime?           @map("scheduled_for_utc")
+  sentAtUtc        DateTime?           @map("sent_at_utc")
+  readAtUtc        DateTime?           @map("read_at_utc")
+  metadata         Json?
   createdAt        DateTime            @default(now()) @map("created_at")
 
   patient       Patient               @relation(fields: [patientId], references: [id], onDelete: Cascade)
@@ -619,6 +633,8 @@ model VoiceCallRecord {
   dtmfDigitReceived   String?      @map("dtmf_digit_received")
   speechTranscription String?      @map("speech_transcription")
   callOutcome         CallOutcome? @map("call_outcome")
+  attemptNumber       Int          @default(1) @map("attempt_number")
+  failureReason       String?      @map("failure_reason")
   callStartedAt       DateTime     @default(now()) @map("call_started_at")
   callEndedAt         DateTime?    @map("call_ended_at")
 

@@ -50,7 +50,7 @@ CREATE TYPE "NotificationChannel" AS ENUM ('IN_APP', 'EMAIL', 'SMS', 'TELEPHONE_
 CREATE TYPE "NotificationStatus" AS ENUM ('QUEUED', 'DISPATCHED', 'DELIVERED', 'FAILED', 'CANCELLED');
 
 -- CreateEnum
-CREATE TYPE "CallOutcome" AS ENUM ('DOSE_CONFIRMED', 'SNOOZE_REQUESTED', 'TRANSFERRED_TO_CARETAKER', 'NO_RESPONSE_ESCALATED', 'VOICEMAIL_DETECTED');
+CREATE TYPE "CallOutcome" AS ENUM ('DOSE_CONFIRMED', 'DOSE_NOT_TAKEN', 'SNOOZE_REQUESTED', 'TRANSFERRED_TO_CARETAKER', 'NO_RESPONSE_ESCALATED', 'VOICEMAIL_DETECTED', 'CALL_FAILED', 'INVALID_RESPONSE');
 
 -- CreateTable
 CREATE TABLE "users" (
@@ -92,6 +92,14 @@ CREATE TABLE "patients" (
     "audio_readout_enabled" BOOLEAN NOT NULL DEFAULT true,
     "quiet_hours_start" TEXT NOT NULL DEFAULT '22:00',
     "quiet_hours_end" TEXT NOT NULL DEFAULT '07:00',
+    "voice_reminders_enabled" BOOLEAN NOT NULL DEFAULT true,
+    "sms_reminders_enabled" BOOLEAN NOT NULL DEFAULT true,
+    "email_reminders_enabled" BOOLEAN NOT NULL DEFAULT true,
+    "voice_speed" TEXT NOT NULL DEFAULT 'NORMAL',
+    "max_call_attempts" INTEGER NOT NULL DEFAULT 3,
+    "call_retry_interval_minutes" INTEGER NOT NULL DEFAULT 10,
+    "caregiver_escalation_enabled" BOOLEAN NOT NULL DEFAULT true,
+    "appointment_reminders_enabled" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -381,6 +389,9 @@ CREATE TABLE "notifications" (
     "status" "NotificationStatus" NOT NULL DEFAULT 'QUEUED',
     "reference_id" TEXT,
     "scheduled_for_utc" TIMESTAMP(3),
+    "sent_at_utc" TIMESTAMP(3),
+    "read_at_utc" TIMESTAMP(3),
+    "metadata" JSONB,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
@@ -415,6 +426,8 @@ CREATE TABLE "voice_call_records" (
     "dtmf_digit_received" TEXT,
     "speech_transcription" TEXT,
     "call_outcome" "CallOutcome",
+    "attempt_number" INTEGER NOT NULL DEFAULT 1,
+    "failure_reason" TEXT,
     "call_started_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "call_ended_at" TIMESTAMP(3),
 
