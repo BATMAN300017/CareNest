@@ -3,12 +3,17 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 
+export type UserRole = "PATIENT" | "CAREGIVER" | "DOCTOR" | "ADMIN";
+
 export interface User {
   id: string;
   fullName: string;
   email: string;
-  role: "ELDERLY_PATIENT" | "FAMILY_MEMBER" | "CAREGIVER" | "PHYSICIAN";
+  role: UserRole;
   primaryPhone?: string;
+  preferredLanguage?: "en" | "hi";
+  specialty?: string; // For Doctor
+  clinicName?: string; // For Doctor
 }
 
 export interface PatientProfile {
@@ -16,15 +21,24 @@ export interface PatientProfile {
   userId?: string;
   fullName: string;
   dateOfBirth?: string;
+  age?: number;
   primaryPhone?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
+  relationshipLabel?: string;
+  allergies?: string[];
+  chronicConditions?: string[];
+  preferredLanguage?: "en" | "hi";
 }
 
 interface AuthContextType {
   user: User | null;
+  currentRole: UserRole;
+  switchRole: (role: UserRole) => void;
   patientProfile: PatientProfile | null;
   activePatientId: string;
+  activePatient: PatientProfile;
+  linkedPatients: PatientProfile[];
   setActivePatientId: (id: string) => void;
   token: string | null;
   isAuthenticated: boolean;
@@ -32,71 +46,133 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (payload: any) => Promise<void>;
   logout: () => void;
-  setDemoUser: (role: "PATIENT" | "CAREGIVER" | "DOCTOR") => void;
+  setDemoUser: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Default patient for immediate seamless demonstration when running local UI preview
-const DEFAULT_DEMO_PATIENT: PatientProfile = {
-  id: "pat_margaret_123",
-  fullName: "Margaret Jenkins",
-  dateOfBirth: "1948-04-12",
-  primaryPhone: "+15552345678",
-  emergencyContactName: "Sarah Jenkins (Daughter)",
-  emergencyContactPhone: "+15559876543",
-};
+// Canonical Linked Patients (Multi-patient support for Caregivers & Doctors)
+export const CANONICAL_PATIENTS: PatientProfile[] = [
+  {
+    id: "pat_margaret_123",
+    fullName: "Margaret Jenkins",
+    dateOfBirth: "1948-04-12",
+    age: 76,
+    primaryPhone: "+15552345678",
+    emergencyContactName: "Sarah Jenkins (Daughter)",
+    emergencyContactPhone: "+15559876543",
+    relationshipLabel: "Mother",
+    allergies: ["Penicillin", "Sulfa"],
+    chronicConditions: ["Hypertension", "Type 2 Diabetes"],
+    preferredLanguage: "en",
+  },
+  {
+    id: "pat_robert_456",
+    fullName: "Robert Jenkins",
+    dateOfBirth: "1945-09-20",
+    age: 79,
+    primaryPhone: "+15553456789",
+    emergencyContactName: "Sarah Jenkins (Daughter)",
+    emergencyContactPhone: "+15559876543",
+    relationshipLabel: "Father",
+    allergies: ["Aspirin"],
+    chronicConditions: ["Mild Cognitive Impairment", "Arthritis"],
+    preferredLanguage: "hi",
+  },
+];
 
-const DEFAULT_DEMO_USER: User = {
-  id: "usr_margaret_123",
-  fullName: "Margaret Jenkins",
-  email: "margaret.jenkins@example.com",
-  role: "ELDERLY_PATIENT",
-  primaryPhone: "+15552345678",
+const DEFAULT_USERS: Record<UserRole, User> = {
+  PATIENT: {
+    id: "usr_margaret_123",
+    fullName: "Margaret Jenkins",
+    email: "margaret.jenkins@example.com",
+    role: "PATIENT",
+    primaryPhone: "+15552345678",
+    preferredLanguage: "en",
+  },
+  CAREGIVER: {
+    id: "usr_sarah_456",
+    fullName: "Sarah Jenkins",
+    email: "sarah.jenkins@example.com",
+    role: "CAREGIVER",
+    primaryPhone: "+15559876543",
+    preferredLanguage: "en",
+  },
+  DOCTOR: {
+    id: "usr_doc_789",
+    fullName: "Dr. Robert Chen",
+    email: "dr.chen@metroheart.com",
+    role: "DOCTOR",
+    primaryPhone: "+15554321098",
+    specialty: "Cardiology",
+    clinicName: "Memorial Heart Pavilion",
+    preferredLanguage: "en",
+  },
+  ADMIN: {
+    id: "usr_admin_001",
+    fullName: "System Administrator",
+    email: "admin@carenest.org",
+    role: "ADMIN",
+    primaryPhone: "+15550009999",
+    preferredLanguage: "en",
+  },
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [patientProfile, setPatientProfile] = useState<PatientProfile | null>(null);
-  const [activePatientId, setActivePatientId] = useState<string>("pat_margaret_123");
+  const [user, setUser] = useState<User | null>(DEFAULT_USERS.PATIENT);
+  const [currentRole, setCurrentRole] = useState<UserRole>("PATIENT");
+  const [linkedPatients, setLinkedPatients] = useState<PatientProfile[]>(CANONICAL_PATIENTS);
+  const [activePatientId, setActivePatientIdState] = useState<string>("pat_margaret_123");
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Initialize from storage or default to Margaret demo profile
+  // Initialize from storage or fallback to defaults
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     try {
       const savedToken = localStorage.getItem("carenest_token");
       const savedUser = localStorage.getItem("carenest_user");
-      const savedPatient = localStorage.getItem("carenest_patient");
+      const savedRole = localStorage.getItem("carenest_role") as UserRole;
+      const savedPatientId = localStorage.getItem("carenest_active_patient_id");
 
-      if (savedToken && savedUser) {
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+      }
+      if (savedRole && ["PATIENT", "CAREGIVER", "DOCTOR", "ADMIN"].includes(savedRole)) {
+        setCurrentRole(savedRole);
+      }
+      if (savedPatientId) {
+        setActivePatientIdState(savedPatientId);
+      }
+      if (savedToken) {
         setToken(savedToken);
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-
-        if (savedPatient) {
-          const parsedPatient = JSON.parse(savedPatient);
-          setPatientProfile(parsedPatient);
-          setActivePatientId(parsedPatient.id);
-        } else {
-          setPatientProfile(DEFAULT_DEMO_PATIENT);
-          setActivePatientId(DEFAULT_DEMO_PATIENT.id);
-        }
-      } else {
-        // Fallback to demo profile for immediate visual dashboard preview
-        setUser(DEFAULT_DEMO_USER);
-        setPatientProfile(DEFAULT_DEMO_PATIENT);
-        setActivePatientId(DEFAULT_DEMO_PATIENT.id);
       }
     } catch (e) {
-      setUser(DEFAULT_DEMO_USER);
-      setPatientProfile(DEFAULT_DEMO_PATIENT);
-    } finally {
-      setIsLoading(false);
+      // Graceful fallback
     }
   }, []);
+
+  const setActivePatientId = (id: string) => {
+    setActivePatientIdState(id);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("carenest_active_patient_id", id);
+      } catch (e) {}
+    }
+  };
+
+  const switchRole = (role: UserRole) => {
+    setCurrentRole(role);
+    setUser(DEFAULT_USERS[role]);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("carenest_role", role);
+        localStorage.setItem("carenest_user", JSON.stringify(DEFAULT_USERS[role]));
+      } catch (e) {}
+    }
+  };
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -104,19 +180,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await api.post("/api/v1/auth/login", { email, password });
       const { user: authedUser, accessToken, patient } = res;
 
-      setUser(authedUser);
+      const role: UserRole =
+        authedUser.systemRole === "HEALTHCARE_PROFESSIONAL"
+          ? "DOCTOR"
+          : authedUser.systemRole === "SUPER_ADMIN"
+          ? "ADMIN"
+          : authedUser.systemRole === "PATIENT"
+          ? "PATIENT"
+          : "CAREGIVER";
+
+      const userObj: User = {
+        id: authedUser.id,
+        fullName: authedUser.fullName,
+        email: authedUser.email || email,
+        role,
+        primaryPhone: authedUser.phoneNumber,
+        preferredLanguage: authedUser.preferredLanguage || "en",
+      };
+
+      setUser(userObj);
+      setCurrentRole(role);
       setToken(accessToken);
 
       localStorage.setItem("carenest_token", accessToken);
-      localStorage.setItem("carenest_user", JSON.stringify(authedUser));
+      localStorage.setItem("carenest_user", JSON.stringify(userObj));
+      localStorage.setItem("carenest_role", role);
 
       if (patient) {
-        setPatientProfile(patient);
         setActivePatientId(patient.id);
-        localStorage.setItem("carenest_patient", JSON.stringify(patient));
-      } else {
-        setPatientProfile(DEFAULT_DEMO_PATIENT);
-        setActivePatientId(DEFAULT_DEMO_PATIENT.id);
       }
     } finally {
       setIsLoading(false);
@@ -129,16 +220,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await api.post("/api/v1/auth/register", payload);
       const { user: registeredUser, accessToken, patient } = res;
 
-      setUser(registeredUser);
+      const role: UserRole =
+        registeredUser.systemRole === "HEALTHCARE_PROFESSIONAL"
+          ? "DOCTOR"
+          : registeredUser.systemRole === "PATIENT"
+          ? "PATIENT"
+          : "CAREGIVER";
+
+      const userObj: User = {
+        id: registeredUser.id,
+        fullName: registeredUser.fullName,
+        email: registeredUser.email || payload.email,
+        role,
+        primaryPhone: registeredUser.phoneNumber,
+        preferredLanguage: payload.preferredLanguage || "en",
+      };
+
+      setUser(userObj);
+      setCurrentRole(role);
       setToken(accessToken);
 
       localStorage.setItem("carenest_token", accessToken);
-      localStorage.setItem("carenest_user", JSON.stringify(registeredUser));
+      localStorage.setItem("carenest_user", JSON.stringify(userObj));
+      localStorage.setItem("carenest_role", role);
 
       if (patient) {
-        setPatientProfile(patient);
         setActivePatientId(patient.id);
-        localStorage.setItem("carenest_patient", JSON.stringify(patient));
       }
     } finally {
       setIsLoading(false);
@@ -147,49 +254,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setUser(null);
-    setPatientProfile(null);
     setToken(null);
     if (typeof window !== "undefined") {
       localStorage.removeItem("carenest_token");
       localStorage.removeItem("carenest_user");
-      localStorage.removeItem("carenest_patient");
+      localStorage.removeItem("carenest_role");
+      localStorage.removeItem("carenest_active_patient_id");
     }
   };
 
-  const setDemoUser = (role: "PATIENT" | "CAREGIVER" | "DOCTOR") => {
-    if (role === "PATIENT") {
-      setUser(DEFAULT_DEMO_USER);
-      setPatientProfile(DEFAULT_DEMO_PATIENT);
-      setActivePatientId(DEFAULT_DEMO_PATIENT.id);
-    } else if (role === "CAREGIVER") {
-      setUser({
-        id: "usr_sarah_456",
-        fullName: "Sarah Jenkins",
-        email: "sarah.jenkins@example.com",
-        role: "FAMILY_MEMBER",
-        primaryPhone: "+15559876543",
-      });
-      setPatientProfile(DEFAULT_DEMO_PATIENT);
-      setActivePatientId(DEFAULT_DEMO_PATIENT.id);
-    } else {
-      setUser({
-        id: "usr_doc_789",
-        fullName: "Dr. Robert Chen",
-        email: "dr.chen@metroheart.com",
-        role: "PHYSICIAN",
-        primaryPhone: "+15554321098",
-      });
-      setPatientProfile(DEFAULT_DEMO_PATIENT);
-      setActivePatientId(DEFAULT_DEMO_PATIENT.id);
-    }
+  const setDemoUser = (role: UserRole) => {
+    switchRole(role);
   };
+
+  const activePatient =
+    linkedPatients.find((p) => p.id === activePatientId) || CANONICAL_PATIENTS[0];
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        patientProfile,
+        currentRole,
+        switchRole,
+        patientProfile: activePatient,
         activePatientId,
+        activePatient,
+        linkedPatients,
         setActivePatientId,
         token,
         isAuthenticated: Boolean(user),

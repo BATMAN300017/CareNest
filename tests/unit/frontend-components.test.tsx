@@ -9,6 +9,7 @@ import { SnoozeDoseDialog } from "@/components/schedule/snooze-dose-dialog";
 import { EmergencySosDialog } from "@/components/layout/emergency-sos-dialog";
 import { AccessibilityProvider, useAccessibility } from "@/context/accessibility-context";
 import { AuthProvider } from "@/context/auth-context";
+import { LanguageProvider } from "@/context/language-context";
 
 const storageMock: Record<string, string> = {};
 const localStorageMock = {
@@ -27,9 +28,11 @@ Object.defineProperty(window, "localStorage", { value: localStorageMock, writabl
 
 // Test wrapper with context providers
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-  <AccessibilityProvider>
-    <AuthProvider>{children}</AuthProvider>
-  </AccessibilityProvider>
+  <LanguageProvider>
+    <AccessibilityProvider>
+      <AuthProvider>{children}</AuthProvider>
+    </AccessibilityProvider>
+  </LanguageProvider>
 );
 
 describe("CareNest Frontend Components & Accessibility Tests", () => {

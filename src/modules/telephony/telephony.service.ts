@@ -225,7 +225,7 @@ export class TelephonyService {
         data: { status: "CANCELLED" },
       });
 
-      return TwiMLBuilder.buildDoseConfirmedResponse(patient.fullName);
+      return TwiMLBuilder.buildDoseConfirmedResponse(patient.fullName, patient.preferredLanguage);
     }
 
     // Digit 2: Not Taken Yet
@@ -238,7 +238,7 @@ export class TelephonyService {
         },
       });
 
-      return TwiMLBuilder.buildNotTakenResponse(patient.fullName);
+      return TwiMLBuilder.buildNotTakenResponse(patient.fullName, patient.preferredLanguage);
     }
 
     // Digit 3: Snooze 15 minutes
@@ -255,7 +255,7 @@ export class TelephonyService {
         },
       });
 
-      return TwiMLBuilder.buildSnoozeResponse(patient.fullName);
+      return TwiMLBuilder.buildSnoozeResponse(patient.fullName, patient.preferredLanguage);
     }
 
     // Digit 4: Transfer to Caregiver
@@ -291,7 +291,7 @@ export class TelephonyService {
         });
       }
 
-      return TwiMLBuilder.buildCaregiverTransferResponse(caregiverPhone, caregiverName);
+      return TwiMLBuilder.buildCaregiverTransferResponse(caregiverPhone, caregiverName, patient.preferredLanguage);
     }
 
     // Invalid Digit
@@ -304,7 +304,7 @@ export class TelephonyService {
       },
     });
 
-    return TwiMLBuilder.buildInvalidDigitResponse(actionUrl);
+    return TwiMLBuilder.buildInvalidDigitResponse(actionUrl, patient.preferredLanguage);
   }
 
   /**

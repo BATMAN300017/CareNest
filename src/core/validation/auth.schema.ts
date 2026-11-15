@@ -13,6 +13,7 @@ export const RegisterUserSchema = z.object({
     "HEALTHCARE_PROFESSIONAL",
   ]).default("FAMILY_ADMIN"),
   quickPasscode: z.string().regex(/^\d{4,6}$/, "Quick passcode must be a 4 to 6 digit numeric PIN").optional(),
+  preferredLanguage: z.enum(["en", "hi"]).default("en").optional(),
 });
 
 export const LoginUserSchema = z.object({
@@ -48,6 +49,7 @@ export const UpdateUserProfileSchema = z.object({
   avatarUrl: z.string().url("Invalid avatar URL").optional().nullable(),
   phoneNumber: z.string().min(10).regex(/^\+?[1-9]\d{1,14}$/, "Phone number must follow E.164 format").optional(),
   quickPasscode: z.string().regex(/^\d{4,6}$/, "Quick passcode must be a 4 to 6 digit numeric PIN").optional().nullable(),
+  preferredLanguage: z.enum(["en", "hi"]).optional(),
 });
 
 export type RegisterUserInput = z.infer<typeof RegisterUserSchema>;

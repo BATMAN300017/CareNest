@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/context/auth-context";
+import { useLanguage } from "@/context/language-context";
 
 interface HydrationWidgetProps {
   initialCount?: number;
@@ -10,6 +11,7 @@ interface HydrationWidgetProps {
 
 export function HydrationWidget({ initialCount = 4 }: HydrationWidgetProps) {
   const { activePatientId } = useAuth();
+  const { t } = useLanguage();
   const [glasses, setGlasses] = useState(initialCount);
   const [isLogging, setIsLogging] = useState(false);
 
@@ -37,15 +39,15 @@ export function HydrationWidget({ initialCount = 4 }: HydrationWidgetProps) {
       <div>
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold text-on-surface-variant">
-            Hydration Tracker
+            {t("vitals.hydrationLabel")}
           </span>
           <span className="w-8 h-8 rounded-lg bg-surface-container-lowest flex items-center justify-center text-secondary">
             <span className="material-symbols-outlined text-xl">water_drop</span>
           </span>
         </div>
         <div className="font-headline text-2xl font-bold text-on-surface">
-          {glasses} of {targetGlasses}{" "}
-          <span className="text-sm font-normal text-on-surface-variant">Glasses</span>
+          {glasses} / {targetGlasses}{" "}
+          <span className="text-sm font-normal text-on-surface-variant">{t("vitals.glassesUnit")}</span>
         </div>
       </div>
 
@@ -61,7 +63,7 @@ export function HydrationWidget({ initialCount = 4 }: HydrationWidgetProps) {
           type="button"
         >
           <span className="material-symbols-outlined text-lg">add</span>
-          <span>Log Glass</span>
+          <span>{t("vitals.addGlass")}</span>
         </button>
       </div>
     </div>

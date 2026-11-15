@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useLanguage } from "@/context/language-context";
 
 interface Member {
   id: string;
@@ -46,6 +47,8 @@ const mockCaregivers: Member[] = [
 ];
 
 export function CareCircleSidebarCard() {
+  const { t } = useLanguage();
+
   return (
     <div
       className="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 warm-card-shadow p-6"
@@ -57,7 +60,7 @@ export function CareCircleSidebarCard() {
             diversity_1
           </span>
           <h3 className="font-headline text-xl font-bold text-on-surface">
-            My Care Circle
+            {t("careCircle.title")}
           </h3>
         </div>
         <span className="text-xs sm:text-sm text-primary font-bold flex items-center gap-1.5">

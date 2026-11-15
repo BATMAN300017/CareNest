@@ -4,47 +4,77 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAccessibility } from "@/context/accessibility-context";
+import { useAuth } from "@/context/auth-context";
+import { useLanguage } from "@/context/language-context";
 
 interface SidebarProps {
   onOpenSos: () => void;
 }
 
-const navItems = [
-  {
-    name: "Today's Schedule",
-    href: "/schedule",
-    icon: "calendar_today",
-  },
-  {
-    name: "My Medications",
-    href: "/medications",
-    icon: "medication",
-  },
-  {
-    name: "Doctor Appointments",
-    href: "/appointments",
-    icon: "medical_services",
-  },
-  {
-    name: "Care Circle & Messages",
-    href: "/care-circle",
-    icon: "group",
-  },
-  {
-    name: "Health Vitals",
-    href: "/vitals",
-    icon: "favorite",
-  },
-  {
-    name: "Support & Settings",
-    href: "/support",
-    icon: "help",
-  },
-];
-
 export function Sidebar({ onOpenSos }: SidebarProps) {
   const pathname = usePathname();
   const { toggleHighContrast, highContrast } = useAccessibility();
+  const { currentRole, activePatient } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
+
+  const baseNavItems = [
+    {
+      name: t("nav.schedule"),
+      href: "/schedule",
+      icon: "calendar_today",
+    },
+    {
+      name: t("nav.medications"),
+      href: "/medications",
+      icon: "medication",
+    },
+    {
+      name: t("nav.appointments"),
+      href: "/appointments",
+      icon: "medical_services",
+    },
+    {
+      name: t("nav.careCircle"),
+      href: "/care-circle",
+      icon: "group",
+    },
+    {
+      name: t("nav.vitals"),
+      href: "/vitals",
+      icon: "favorite",
+    },
+    {
+      name: t("nav.support"),
+      href: "/support",
+      icon: "help",
+    },
+  ];
+
+  // Role-specific primary portal links
+  const roleSpecificItem =
+    currentRole === "CAREGIVER"
+      ? {
+          name: t("caregiver.overviewTitle"),
+          href: "/caregiver",
+          icon: "dashboard_customize",
+        }
+      : currentRole === "DOCTOR"
+      ? {
+          name: t("doctor.overviewTitle"),
+          href: "/doctor",
+          icon: "stethoscope",
+        }
+      : currentRole === "ADMIN"
+      ? {
+          name: t("admin.overviewTitle"),
+          href: "/admin",
+          icon: "admin_panel_settings",
+        }
+      : null;
+
+  const navItems = roleSpecificItem
+    ? [roleSpecificItem, ...baseNavItems]
+    : baseNavItems;
 
   return (
     <aside
@@ -61,16 +91,16 @@ export function Sidebar({ onOpenSos }: SidebarProps) {
           </div>
           <div>
             <span className="font-headline text-2xl text-primary font-bold block leading-tight">
-              CareNest
+              {t("nav.brand")}
             </span>
-            <span className="text-sm text-on-surface-variant font-medium">
-              Senior Care Platform
+            <span className="text-xs text-on-surface-variant font-medium">
+              {t("nav.tagline")}
             </span>
           </div>
         </div>
 
         {/* Navigation Menu */}
-        <nav className="flex flex-col gap-2 pt-2">
+        <nav className="flex flex-col gap-2 pt-1">
           {navItems.map((item) => {
             const isActive =
               pathname === item.href || (item.href === "/schedule" && pathname === "/");
@@ -79,7 +109,7 @@ export function Sidebar({ onOpenSos }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-150 min-h-[56px] active:scale-[0.98] ${
+                className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-150 min-h-[52px] active:scale-[0.98] ${
                   isActive
                     ? "bg-primary text-on-primary font-bold shadow-sm"
                     : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-medium"
@@ -92,37 +122,47 @@ export function Sidebar({ onOpenSos }: SidebarProps) {
                 >
                   {item.icon}
                 </span>
-                <span className="text-base tracking-normal">{item.name}</span>
+                <span className="text-sm font-semibold tracking-normal">{item.name}</span>
               </Link>
             );
           })}
         </nav>
       </div>
 
-      {/* Sidebar Bottom: Accessibility Settings & Urgent Call CTA */}
-      <div className="flex flex-col gap-4 border-t border-outline-variant/30 pt-4">
+      {/* Sidebar Bottom: Language Toggle, High Contrast & Emergency SOS */}
+      <div className="flex flex-col gap-3 border-t border-outline-variant/30 pt-4">
+        {/* Language Switcher Button */}
+        <button
+          onClick={() => setLanguage(language === "en" ? "hi" : "en")}
+          className="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-xl text-xs font-bold transition-colors min-h-[48px] active:scale-[0.98] w-full text-left border border-outline-variant/30"
+          type="button"
+          title="Switch language"
+        >
+          <span className="material-symbols-outlined text-xl">translate</span>
+          <span>{language === "en" ? "हिन्दी में देखें (Hindi)" : "View in English"}</span>
+        </button>
+
+        {/* High Contrast Toggle */}
         <button
           onClick={toggleHighContrast}
-          className="flex items-center gap-4 px-5 py-3.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-xl font-medium transition-colors duration-200 min-h-[56px] active:scale-[0.98] w-full text-left"
+          className="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-xl text-xs font-semibold transition-colors min-h-[48px] active:scale-[0.98] w-full text-left"
           type="button"
           aria-pressed={highContrast}
         >
-          <span className="material-symbols-outlined text-2xl">contrast</span>
-          <span className="text-base">
-            {highContrast ? "Normal Contrast" : "High Contrast"}
-          </span>
+          <span className="material-symbols-outlined text-xl">contrast</span>
+          <span>{highContrast ? t("nav.normalContrast") : t("nav.highContrast")}</span>
         </button>
 
         {/* Urgent Help Call Button */}
         <button
           onClick={onOpenSos}
-          className="w-full min-h-[56px] bg-error hover:bg-red-700 active:scale-[0.98] text-on-error rounded-xl font-bold px-4 py-3 flex items-center justify-center gap-3 shadow-md transition-all"
+          className="w-full min-h-[52px] bg-error hover:bg-red-700 active:scale-[0.98] text-on-error rounded-xl font-bold px-4 py-3 flex items-center justify-center gap-2 shadow-md transition-all text-sm"
           type="button"
         >
-          <span className="material-symbols-outlined text-2xl material-symbols-fill">
+          <span className="material-symbols-outlined text-xl material-symbols-fill">
             emergency
           </span>
-          <span className="text-base">Urgent Help Call</span>
+          <span>{t("nav.urgentHelp")}</span>
         </button>
       </div>
     </aside>

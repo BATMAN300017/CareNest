@@ -3,18 +3,20 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const mobileNavItems = [
-  { name: "Schedule", href: "/schedule", icon: "calendar_today" },
-  { name: "Meds", href: "/medications", icon: "medication" },
-  { name: "Doctors", href: "/appointments", icon: "medical_services" },
-  { name: "Care Circle", href: "/care-circle", icon: "group" },
-  { name: "Vitals", href: "/vitals", icon: "favorite" },
-  { name: "Settings", href: "/support", icon: "help" },
-];
+import { useLanguage } from "@/context/language-context";
 
 export function MobileNav() {
   const pathname = usePathname();
+  const { t } = useLanguage();
+
+  const mobileNavItems = [
+    { name: t("nav.schedule"), href: "/schedule", icon: "calendar_today" },
+    { name: t("nav.medications"), href: "/medications", icon: "medication" },
+    { name: t("nav.appointments"), href: "/appointments", icon: "medical_services" },
+    { name: t("nav.careCircle"), href: "/care-circle", icon: "group" },
+    { name: t("nav.vitals"), href: "/vitals", icon: "favorite" },
+    { name: t("nav.support"), href: "/support", icon: "help" },
+  ];
 
   return (
     <nav
@@ -29,20 +31,22 @@ export function MobileNav() {
           <Link
             key={item.href}
             href={item.href}
-            className={`flex flex-col items-center justify-center py-2 px-2 rounded-xl min-h-[56px] min-w-[56px] transition-colors ${
+            className={`flex flex-col items-center justify-center py-1.5 px-1.5 rounded-xl min-h-[52px] min-w-[52px] transition-colors ${
               isActive
                 ? "text-primary font-bold bg-primary-fixed/30"
                 : "text-on-surface-variant hover:text-on-surface font-medium"
             }`}
           >
             <span
-              className={`material-symbols-outlined text-2xl ${
+              className={`material-symbols-outlined text-xl ${
                 isActive ? "material-symbols-fill" : ""
               }`}
             >
               {item.icon}
             </span>
-            <span className="text-xs mt-0.5">{item.name}</span>
+            <span className="text-[11px] mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[56px] text-center">
+              {item.name}
+            </span>
           </Link>
         );
       })}

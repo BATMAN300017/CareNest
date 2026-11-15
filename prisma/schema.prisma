@@ -170,6 +170,7 @@ model User {
   emailVerified       Boolean      @default(false) @map("email_verified")
   failedLoginAttempts Int          @default(0) @map("failed_login_attempts")
   lockedUntil         DateTime?    @map("locked_until")
+  preferredLanguage   String       @default("en") @map("preferred_language")
   createdAt           DateTime     @default(now()) @map("created_at")
   updatedAt           DateTime     @updatedAt @map("updated_at")
 

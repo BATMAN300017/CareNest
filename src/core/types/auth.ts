@@ -20,6 +20,7 @@ export interface AuthenticatedUser {
   fullName: string;
   systemRole: SystemRole;
   isActive: boolean;
+  preferredLanguage?: string;
 }
 
 export interface AuthTokenPayload {
@@ -29,6 +30,7 @@ export interface AuthTokenPayload {
   role: SystemRole;
   type: "access" | "refresh" | "tablet_kiosk";
   patientId?: string; // If scoped to a specific kiosk/patient
+  preferredLanguage?: string;
   iat?: number;
   exp?: number;
 }

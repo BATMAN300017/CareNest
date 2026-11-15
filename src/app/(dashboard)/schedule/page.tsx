@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
+import { useLanguage } from "@/context/language-context";
 import { api } from "@/lib/api-client";
 import { HeroProgress } from "@/components/schedule/hero-progress";
 import { ConfirmDoseDialog } from "@/components/schedule/confirm-dose-dialog";
@@ -108,6 +109,7 @@ const DEFAULT_DOSES: DoseItem[] = [
 
 export default function SchedulePage() {
   const { activePatientId } = useAuth();
+  const { t } = useLanguage();
   const [doses, setDoses] = useState<DoseItem[]>(DEFAULT_DOSES);
   const [activeDose, setActiveDose] = useState<DoseItem | null>(null);
   const [dialogMode, setDialogMode] = useState<"CONFIRM" | "SKIP" | "SNOOZE" | null>(null);
@@ -218,11 +220,11 @@ export default function SchedulePage() {
                 schedule
               </span>
               <h2 className="font-headline text-2xl font-bold text-on-surface">
-                Today&apos;s Medication Journey
+                {t("schedule.journeyTitle")}
               </h2>
             </div>
             <span className="text-sm sm:text-base text-on-surface-variant font-medium">
-              Sorted chronologically
+              {t("schedule.chronological")}
             </span>
           </div>
 
@@ -235,16 +237,16 @@ export default function SchedulePage() {
                 </span>
                 <div>
                   <h3 className="font-headline text-lg font-bold text-on-surface">
-                    Morning Routine
+                    {t("schedule.morningRoutine")}
                   </h3>
-                  <span className="text-sm text-on-surface-variant">Scheduled for 8:00 AM</span>
+                  <span className="text-sm text-on-surface-variant">{t("schedule.morningTime")}</span>
                 </div>
               </div>
               <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary-fixed text-on-primary-fixed font-bold text-xs sm:text-sm">
                 <span className="material-symbols-outlined text-lg material-symbols-fill">
                   check_circle
                 </span>
-                Completed at 8:12 AM
+                {t("schedule.confirmedAt", { time: "8:12 AM" })}
               </span>
             </div>
 
@@ -309,21 +311,21 @@ export default function SchedulePage() {
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-headline text-xl font-bold text-on-surface">
-                            Afternoon Dose
+                            {t("schedule.afternoonRoutine")}
                           </h3>
                           {isDueNow && (
                             <span className="px-3 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-extrabold text-xs tracking-wide uppercase animate-pulse">
-                              Due Right Now
+                              {t("schedule.dueRightNow")}
                             </span>
                           )}
                           {isTaken && (
                             <span className="px-3 py-1 rounded-full bg-primary-fixed text-on-primary-fixed font-bold text-xs uppercase">
-                              ✓ Taken
+                              ✓ {t("common.completed")}
                             </span>
                           )}
                         </div>
                         <span className="text-sm text-on-surface-variant">
-                          Scheduled for {dose.scheduledTime} (Lunchtime)
+                          {t("schedule.afternoonTime")}
                         </span>
                       </div>
                     </div>
@@ -331,7 +333,7 @@ export default function SchedulePage() {
                     {isDueNow && (
                       <div className="flex items-center gap-2 text-tertiary font-bold text-sm sm:text-base">
                         <span className="material-symbols-outlined text-2xl">alarm</span>
-                        <span>Ready now</span>
+                        <span>{t("schedule.readyNow")}</span>
                       </div>
                     )}
                   </div>
@@ -364,7 +366,7 @@ export default function SchedulePage() {
                             <span className="material-symbols-outlined text-2xl text-secondary">
                               water_drop
                             </span>
-                            <span>Drink with a full 8 oz glass of water to avoid stomach discomfort.</span>
+                            <span>{t("schedule.waterAdvice")}</span>
                           </p>
                         </div>
                       </div>
@@ -387,7 +389,7 @@ export default function SchedulePage() {
                         <span className="material-symbols-outlined text-3xl material-symbols-fill">
                           task_alt
                         </span>
-                        <span>✓ I Have Taken This</span>
+                        <span>✓ {t("schedule.takeDoseNow")}</span>
                       </button>
 
                       {/* Snooze Button */}
@@ -400,7 +402,7 @@ export default function SchedulePage() {
                         type="button"
                       >
                         <span className="material-symbols-outlined text-2xl">snooze</span>
-                        <span>Remind in 15 mins</span>
+                        <span>{t("schedule.remind15Min")}</span>
                       </button>
 
                       {/* Skip Button */}
@@ -413,14 +415,14 @@ export default function SchedulePage() {
                         type="button"
                       >
                         <span className="material-symbols-outlined text-xl">block</span>
-                        <span>Hold / Skip</span>
+                        <span>{t("schedule.holdOrSkip")}</span>
                       </button>
                     </div>
                   ) : (
                     <div className="p-4 bg-primary-fixed/30 rounded-xl border border-primary/20 flex items-center justify-between">
                       <span className="text-base text-primary font-bold flex items-center gap-2">
                         <span className="material-symbols-outlined text-2xl">check_circle</span>
-                        Confirmed taken at {dose.takenAtTime || "1:15 PM"}
+                        {t("schedule.confirmedTakenAt", { time: dose.takenAtTime || "1:15 PM" })}
                       </span>
                       <span className="text-xs text-on-surface-variant font-medium">
                         {dose.takenBy || "Margaret"}
@@ -440,13 +442,17 @@ export default function SchedulePage() {
                   <span className="material-symbols-outlined text-2xl">bedtime</span>
                 </span>
                 <div>
-                  <h3 className="font-headline text-lg font-bold text-on-surface">Later Tonight</h3>
-                  <span className="text-sm text-on-surface-variant">2 Upcoming doses</span>
+                  <h3 className="font-headline text-lg font-bold text-on-surface">
+                    {t("schedule.eveningRoutine")}
+                  </h3>
+                  <span className="text-sm text-on-surface-variant">
+                    {t("common.upcoming")}
+                  </span>
                 </div>
               </div>
               <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-surface-container text-on-surface-variant font-bold text-xs sm:text-sm">
                 <span className="material-symbols-outlined text-lg">schedule</span>
-                Upcoming
+                {t("common.upcoming")}
               </span>
             </div>
 
@@ -483,7 +489,7 @@ export default function SchedulePage() {
                       href="/medications"
                       className="min-h-[48px] px-5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-sm transition-colors whitespace-nowrap flex items-center"
                     >
-                      View Details
+                      {t("schedule.viewDetails")}
                     </Link>
                   </div>
                 ))}
@@ -498,7 +504,7 @@ export default function SchedulePage() {
                   monitor_heart
                 </span>
                 <h3 className="font-headline text-xl font-bold text-on-surface">
-                  Today&apos;s Health Vitals
+                  {t("vitals.sectionTitle")}
                 </h3>
               </div>
               <span className="text-sm text-on-surface-variant font-medium hidden sm:inline">
@@ -511,18 +517,18 @@ export default function SchedulePage() {
               <div className="p-5 rounded-xl bg-surface-container-low border border-outline-variant/30">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-on-surface-variant font-semibold">
-                    Blood Pressure
+                    {t("vitals.bpLabel")}
                   </span>
                   <span className="w-8 h-8 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary">
                     <span className="material-symbols-outlined text-xl">favorite</span>
                   </span>
                 </div>
                 <div className="font-headline text-2xl font-bold text-on-surface">
-                  122/80 <span className="text-sm font-normal text-on-surface-variant">mmHg</span>
+                  122/80 <span className="text-sm font-normal text-on-surface-variant">{t("vitals.bpUnit")}</span>
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <span className="inline-block w-2.5 h-2.5 rounded-full bg-primary"></span>
-                  <span className="text-xs text-primary font-bold">Normal Range</span>
+                  <span className="text-xs text-primary font-bold">{t("vitals.bpStatus")}</span>
                   <span className="text-xs text-on-surface-variant ml-auto">8:30 AM</span>
                 </div>
               </div>
@@ -531,18 +537,18 @@ export default function SchedulePage() {
               <div className="p-5 rounded-xl bg-surface-container-low border border-outline-variant/30">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-on-surface-variant font-semibold">
-                    Fasting Glucose
+                    {t("vitals.glucoseLabel")}
                   </span>
                   <span className="w-8 h-8 rounded-lg bg-surface-container-lowest flex items-center justify-center text-secondary">
                     <span className="material-symbols-outlined text-xl">bloodtype</span>
                   </span>
                 </div>
                 <div className="font-headline text-2xl font-bold text-on-surface">
-                  108 <span className="text-sm font-normal text-on-surface-variant">mg/dL</span>
+                  108 <span className="text-sm font-normal text-on-surface-variant">{t("vitals.glucoseUnit")}</span>
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <span className="inline-block w-2.5 h-2.5 rounded-full bg-primary"></span>
-                  <span className="text-xs text-primary font-bold">Stable &amp; Optimal</span>
+                  <span className="text-xs text-primary font-bold">{t("vitals.glucoseStatus")}</span>
                   <span className="text-xs text-on-surface-variant ml-auto">7:45 AM</span>
                 </div>
               </div>
@@ -560,18 +566,18 @@ export default function SchedulePage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-xs font-bold uppercase">
-                      Tomorrow
+                      {t("appointments.tomorrow")}
                     </span>
                     <h4 className="font-headline text-lg font-bold text-on-surface">
-                      Cardiology Check-up with Dr. Robert Chen
+                      {t("appointments.cardiologyCheckup")}
                     </h4>
                   </div>
                   <p className="text-sm text-on-surface-variant mt-1">
-                    Tomorrow at 2:00 PM • Memorial Heart Pavilion, Suite 304
+                    {t("appointments.timeAndPlace")}
                   </p>
                   <p className="text-sm text-primary font-bold flex items-center gap-1.5 mt-1">
                     <span className="material-symbols-outlined text-base">directions_car</span>
-                    Transport confirmed via SilverRide at 1:15 PM (Door-to-door escort)
+                    {t("appointments.rideConfirmed")}
                   </p>
                 </div>
               </div>
@@ -579,7 +585,7 @@ export default function SchedulePage() {
                 href="/appointments"
                 className="min-h-[48px] px-6 py-2.5 rounded-xl bg-surface-container-lowest text-secondary border border-secondary font-bold text-sm hover:bg-surface-container-high transition-colors whitespace-nowrap flex items-center justify-center"
               >
-                Review Ride &amp; Prep
+                {t("appointments.reviewRide")}
               </Link>
             </div>
           </div>

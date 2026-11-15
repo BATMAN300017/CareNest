@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useAuth } from "@/context/auth-context";
+import { useLanguage } from "@/context/language-context";
 
 interface HeroProgressProps {
   completedCount: number;
@@ -14,8 +15,9 @@ export function HeroProgress({
   totalCount,
   onOpenVoice,
 }: HeroProgressProps) {
-  const { patientProfile } = useAuth();
-  const firstName = patientProfile?.fullName?.split(" ")[0] || "Margaret";
+  const { activePatient } = useAuth();
+  const { t, formatNumber } = useLanguage();
+  const firstName = activePatient?.fullName?.split(" ")[0] || "Margaret";
 
   const total = totalCount > 0 ? totalCount : 5;
   const completed = completedCount;
@@ -40,7 +42,7 @@ export function HeroProgress({
             height="96"
             style={{ width: "96px", height: "96px", transform: "rotate(-90deg)" }}
           >
-            {/* Background Track Circle: fill explicitly none, light container stroke */}
+            {/* Background Track Circle: fill explicitly none */}
             <circle
               className="text-surface-container fill-none"
               cx="48"
@@ -67,11 +69,11 @@ export function HeroProgress({
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-            <span className="font-headline text-xl sm:text-2xl font-bold text-primary">
-              {completed} / {total}
+            <span className="font-headline text-lg sm:text-2xl font-bold text-primary">
+              {formatNumber(completed)} / {formatNumber(total)}
             </span>
-            <span className="text-xs text-on-surface-variant font-medium leading-none">
-              Doses
+            <span className="text-[11px] text-on-surface-variant font-medium leading-none">
+              {t("hero.dosesLabel")}
             </span>
           </div>
         </div>
@@ -82,15 +84,15 @@ export function HeroProgress({
             <span className="material-symbols-outlined text-base material-symbols-fill">
               sentiment_satisfied
             </span>
-            <span>{percentage >= 60 ? "On Track Today" : "Medication Journey"}</span>
+            <span>{percentage >= 60 ? t("hero.badgeOnTrack") : t("hero.badgeJourney")}</span>
           </div>
-          <h2 className="font-headline text-xl sm:text-2xl font-bold text-on-surface">
-            You have {completed} out of {total} medications completed today.
+          <h2 className="font-headline text-lg sm:text-2xl font-bold text-on-surface">
+            {t("hero.progressTitle", { completed, total })}
           </h2>
-          <p className="text-base text-on-surface-variant mt-1">
+          <p className="text-sm sm:text-base text-on-surface-variant mt-1">
             {percentage === 100
-              ? `Outstanding, ${firstName}! All scheduled medications for today are confirmed taken.`
-              : `Wonderful job, ${firstName}! Your scheduled doses are organized and monitored for your safety.`}
+              ? t("hero.progressSubComplete", { name: firstName })
+              : t("hero.progressSubOnTrack", { name: firstName })}
           </p>
         </div>
       </div>
@@ -107,9 +109,9 @@ export function HeroProgress({
           </span>
         </div>
         <div>
-          <p className="text-xs text-on-surface-variant font-medium">Voice Assistant Active</p>
+          <p className="text-xs text-on-surface-variant font-medium">{t("hero.voicePillActive")}</p>
           <p className="text-sm sm:text-base font-bold text-primary">
-            Say &ldquo;Hey CareNest, mark as taken&rdquo;
+            {t("hero.voicePillPrompt")}
           </p>
         </div>
       </button>

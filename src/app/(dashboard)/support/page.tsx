@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
+import { useLanguage } from "@/context/language-context";
 import { api } from "@/lib/api-client";
 import { useAccessibility } from "@/context/accessibility-context";
 
@@ -75,6 +76,7 @@ const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
 
 export default function SupportPage() {
   const { activePatientId } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const { textSize, increaseTextSize, decreaseTextSize, highContrast, toggleHighContrast } =
     useAccessibility();
 
@@ -328,6 +330,84 @@ export default function SupportPage() {
                 className="w-6 h-6 text-primary focus:ring-primary rounded"
               />
             </div>
+          </div>
+
+          {/* Language & Regional Preferences Card */}
+          <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 warm-card-shadow p-6 space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-outline-variant/30">
+              <span className="material-symbols-outlined text-3xl text-primary material-symbols-fill">
+                translate
+              </span>
+              <div>
+                <h3 className="font-headline text-xl font-bold text-on-surface">
+                  {language === "hi" ? "भाषा और क्षेत्रीय प्राथमिकताएं" : "Language & Regional Preferences"}
+                </h3>
+                <p className="text-xs sm:text-sm text-on-surface-variant">
+                  {language === "hi"
+                    ? "इंटरफ़ेस भाषा, सूचना टेम्पलेट और आवाज़ सहायक सेटिंग्स चुनें"
+                    : "Choose application language, reminder templates, and speech synthesis voice"}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* English Option */}
+              <button
+                type="button"
+                onClick={() => setLanguage("en")}
+                className={`p-4 rounded-xl border-2 text-left flex items-start gap-3 transition-all ${
+                  language === "en"
+                    ? "border-primary bg-primary-fixed/20 shadow-sm"
+                    : "border-outline-variant/30 bg-surface-container-low hover:bg-surface-container"
+                }`}
+              >
+                <span className="text-2xl">🇺🇸</span>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-headline font-bold text-base text-on-surface">English</span>
+                    {language === "en" && (
+                      <span className="material-symbols-outlined text-primary text-xl material-symbols-fill">
+                        check_circle
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-1">
+                    English UI, US dates, standard automated voice reminders
+                  </p>
+                </div>
+              </button>
+
+              {/* Hindi Option */}
+              <button
+                type="button"
+                onClick={() => setLanguage("hi")}
+                className={`p-4 rounded-xl border-2 text-left flex items-start gap-3 transition-all ${
+                  language === "hi"
+                    ? "border-primary bg-primary-fixed/20 shadow-sm"
+                    : "border-outline-variant/30 bg-surface-container-low hover:bg-surface-container"
+                }`}
+              >
+                <span className="text-2xl">🇮🇳</span>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-headline font-bold text-base text-on-surface">हिन्दी (Hindi)</span>
+                    {language === "hi" && (
+                      <span className="material-symbols-outlined text-primary text-xl material-symbols-fill">
+                        check_circle
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-1 font-hindi">
+                    देवनागरी इंटरफ़ेस, भारतीय दिनांक प्रारूप, हिन्दी आवाज़ वाचन
+                  </p>
+                </div>
+              </button>
+            </div>
+            <p className="text-xs text-on-surface-variant">
+              {language === "hi"
+                ? "नोट: चिकित्सीय सुरक्षा के लिए दवा के नाम (उदा. Lisinopril 10mg) हमेशा मूल नुस्खे के अनुसार सुरक्षित रखे जाते हैं।"
+                : "Note: For patient safety, medication brand names (e.g. Lisinopril 10mg) are always accurately preserved."}
+            </p>
           </div>
 
           {/* Quick Accessibility Controls Box */}

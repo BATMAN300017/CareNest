@@ -127,8 +127,8 @@ const config: Config = {
         "outline-variant": "#BFC9C2",
       },
       fontFamily: {
-        sans: ["Plus Jakarta Sans", "system-ui", "sans-serif"],
-        headline: ["Plus Jakarta Sans", "sans-serif"],
+        sans: ["Plus Jakarta Sans", "Noto Sans Devanagari", "system-ui", "sans-serif"],
+        headline: ["Plus Jakarta Sans", "Noto Sans Devanagari", "sans-serif"],
       },
       fontSize: {
         "headline-xl": ["40px", { lineHeight: "52px", letterSpacing: "-0.02em", fontWeight: "700" }],

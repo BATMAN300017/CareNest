@@ -71,6 +71,7 @@ export class AuthService {
         quickPasscodeHash,
         fullName: input.fullName,
         systemRole: input.systemRole as any,
+        preferredLanguage: input.preferredLanguage || "en",
       },
       select: {
         id: true,
@@ -78,6 +79,7 @@ export class AuthService {
         phoneNumber: true,
         fullName: true,
         systemRole: true,
+        preferredLanguage: true,
         isActive: true,
         createdAt: true,
       },
@@ -90,6 +92,7 @@ export class AuthService {
       fullName: user.fullName,
       systemRole: user.systemRole as any,
       isActive: user.isActive,
+      preferredLanguage: user.preferredLanguage,
     };
 
     const accessToken = await generateAccessToken(authenticatedUser);
@@ -171,6 +174,7 @@ export class AuthService {
       fullName: user.fullName,
       systemRole: user.systemRole as any,
       isActive: user.isActive,
+      preferredLanguage: user.preferredLanguage,
     };
 
     const accessToken = await generateAccessToken(authenticatedUser);
@@ -499,6 +503,7 @@ export class AuthService {
       fullName: user.fullName,
       systemRole: user.systemRole as any,
       isActive: user.isActive,
+      preferredLanguage: user.preferredLanguage,
     };
 
     const newAccessToken = await generateAccessToken(authenticatedUser);
