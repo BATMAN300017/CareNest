@@ -9,7 +9,14 @@ import { AdherenceService } from "../adherence/adherence.service";
 import { AuditService } from "../audit/audit.service";
 
 export class TelephonyService {
-  private static voiceProvider: IVoiceCallProvider = new TwilioVoiceProvider();
+  private static voiceProvider: IVoiceCallProvider | null = null;
+
+  private static getVoiceProvider(): IVoiceCallProvider {
+    if (!this.voiceProvider) {
+      this.voiceProvider = new TwilioVoiceProvider();
+    }
+    return this.voiceProvider;
+  }
 
   /**
    * Allows injecting mock voice provider during automated testing.
@@ -89,7 +96,7 @@ export class TelephonyService {
     const voiceUrl = `${config.twilio.webhookBaseUrl}/api/v1/telephony/voice/remind?doseId=${doseId}&patientId=${patientId}`;
     const statusCallbackUrl = `${config.twilio.webhookBaseUrl}/api/v1/telephony/voice/status-callback`;
 
-    const result = await this.voiceProvider.initiateCall({
+    const result = await this.getVoiceProvider().initiateCall({
       toPhone: patient.primaryPhone,
       voiceUrl,
       statusCallbackUrl,

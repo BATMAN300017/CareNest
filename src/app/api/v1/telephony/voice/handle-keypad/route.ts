@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { TelephonyService } from "@/modules/telephony/telephony.service";
 import { WebhookVerifier } from "@/core/security/webhook-verifier";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const doseId = searchParams.get("doseId");
