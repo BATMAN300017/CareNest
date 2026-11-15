@@ -43,6 +43,7 @@ enum ConsentStatus {
 enum InviteStatus {
   PENDING
   ACCEPTED
+  REJECTED
   EXPIRED
   REVOKED
 }
@@ -182,6 +183,8 @@ model User {
   auditLogs              AuditLog[]               @relation("UserAuditLogs")
   deviceRegistrations    DeviceRegistration[]
   notificationsReceived  Notification[]           @relation("UserNotificationsReceived")
+  passwordResetTokens    PasswordResetToken[]
+  revokedTokens          RevokedToken[]
 
   @@index([email])
   @@index([phoneNumber])
@@ -647,4 +650,32 @@ model DeviceRegistration {
 
   @@index([userId])
   @@map("device_registrations")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model RevokedToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique @map("token_hash")
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  revokedAt DateTime @default(now()) @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([userId])
+  @@map("revoked_tokens")
 }

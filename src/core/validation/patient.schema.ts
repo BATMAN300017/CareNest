@@ -52,7 +52,36 @@ export const JoinCareCircleSchema = z.object({
   inviteCode: z.string().min(6, "Invite code must be at least 6 characters").max(12),
 });
 
+export const UpdateMemberPermissionsSchema = z.object({
+  circleRole: z.enum(["FAMILY_ADMIN", "FAMILY_MEMBER", "CARETAKER", "NURSE", "CLINICIAN"]).optional(),
+  relationshipLabel: z.string().min(1).optional(),
+  canManageMedications: z.boolean().optional(),
+  canManageAppointments: z.boolean().optional(),
+  canViewVitals: z.boolean().optional(),
+  canViewRecords: z.boolean().optional(),
+  receiveEmergencyAlerts: z.boolean().optional(),
+  receiveMissedDoseCalls: z.boolean().optional(),
+});
+
+export const GrantConsentSchema = z.object({
+  grantedToUserId: z.string().uuid("Invalid user ID"),
+  consentType: z.enum([
+    "FULL_HEALTHCARE_PROXY",
+    "MEDICATION_MANAGEMENT",
+    "VITALS_VIEW_ONLY",
+    "APPOINTMENT_ESCORT",
+  ]),
+  digitalSignatureHash: z.string().optional(),
+});
+
+export const RevokeConsentSchema = z.object({
+  revocationReason: z.string().min(3, "Revocation reason is required"),
+});
+
 export type CreatePatientProfileInput = z.infer<typeof CreatePatientProfileSchema>;
 export type UpdateAccessibilitySettingsInput = z.infer<typeof UpdateAccessibilitySettingsSchema>;
 export type CreateCareCircleInviteInput = z.infer<typeof CreateCareCircleInviteSchema>;
 export type JoinCareCircleInput = z.infer<typeof JoinCareCircleSchema>;
+export type UpdateMemberPermissionsInput = z.infer<typeof UpdateMemberPermissionsSchema>;
+export type GrantConsentInput = z.infer<typeof GrantConsentSchema>;
+export type RevokeConsentInput = z.infer<typeof RevokeConsentSchema>;

@@ -42,3 +42,29 @@ CareNest enforces a dual-tier authorization model: **System Role** (global ident
 1. **Explicit Consent Records**: Every caregiver access requires a corresponding `patient_consents` record. If an elderly patient revokes consent via their dashboard, the member's session immediately loses access to all patient PHI.
 2. **Break-Glass Emergency Protocol**: In an Emergency SOS event, pre-authorized emergency contacts receive immediate temporary elevated visibility into medications, allergies, and location without administrative delay. Every break-glass access generates a high-severity audit log.
 3. **Audit Attribution**: When a dose is recorded as taken, the system logs both the actor ID (`confirmed_by_user_id`) and the intake method (`DASHBOARD_UI`, `VOICE_ASSISTANT`, or `TELEPHONE_DTMF`), preventing ambiguity during caregiver shift changes.
+
+---
+
+## 4. Care Circle Invitation & Consent Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> InvitationCreated: Admin / Patient issues invite (CN-XXXXXX, 7-day TTL)
+    InvitationCreated --> Expired: Expiration (7 days elapsed)
+    InvitationCreated --> Revoked: Admin / Patient revokes invite
+    InvitationCreated --> Rejected: Invitee declines invite
+    InvitationCreated --> Accepted: Invitee enters valid code
+
+    state Accepted {
+        [*] --> MembershipActive: Create care_circle_memberships record
+        MembershipActive --> ConsentGranted: Automatic patient_consents record created
+    }
+
+    ConsentGranted --> ConsentRevoked: Patient or Admin revokes consent
+    ConsentRevoked --> AccessTerminated: Token immediate invalidation
+```
+
+### Access Enforcement Rules:
+- **Zero Pre-Acceptance Exposure:** An invited party cannot query or view any patient data until the code is formally accepted and consent status is `GRANTED`.
+- **Consent Revocation Immediate Effect:** When consent is revoked (`DELETE /api/v1/patients/:id/consents/:id`), `consent-guard.ts` intercepts all subsequent requests for that patient ID and returns `403 Forbidden` (`CONSENT_REVOKED`).
+- **Token Invalidation on Logout:** Calling `POST /api/v1/auth/logout` records the active token hash in `revoked_tokens`. Any subsequent request with that token is immediately blocked by `auth-guard.ts`.

@@ -1,7 +1,11 @@
 import crypto from "crypto";
 import { prisma } from "../../core/database/prisma";
 import { AppError, ErrorCode } from "../../core/errors/app-error";
-import { CreateCareCircleInviteInput } from "../../core/validation/patient.schema";
+import {
+  CreateCareCircleInviteInput,
+  UpdateMemberPermissionsInput,
+  GrantConsentInput,
+} from "../../core/validation/patient.schema";
 import { AuditService } from "../audit/audit.service";
 
 export class CareCircleService {
@@ -27,6 +31,25 @@ export class CareCircleService {
   }
 
   /**
+   * Retrieves all pending, unexpired invitations for a patient.
+   */
+  static async getPendingInvites(patientId: string) {
+    return prisma.invitation.findMany({
+      where: {
+        patientId,
+        status: "PENDING",
+        expiresAt: { gt: new Date() },
+      },
+      include: {
+        invitedByUser: {
+          select: { id: true, fullName: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  /**
    * Generates a 6-digit alphanumeric invitation code for an invited family member or nurse.
    */
   static async createInvite(
@@ -34,7 +57,6 @@ export class CareCircleService {
     invitedByUserId: string,
     input: CreateCareCircleInviteInput
   ) {
-    // Generate secure random alphanumeric invite code (e.g., CN-894215)
     const randomHex = crypto.randomBytes(3).toString("hex").toUpperCase();
     const inviteCode = `CN-${randomHex}`;
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
@@ -66,6 +88,70 @@ export class CareCircleService {
   }
 
   /**
+   * Revokes/cancels a pending invitation before it has been accepted.
+   */
+  static async revokeInvite(patientId: string, inviteId: string, actorUserId: string) {
+    const invite = await prisma.invitation.findUnique({
+      where: { id: inviteId },
+    });
+
+    if (!invite || invite.patientId !== patientId) {
+      throw new AppError("Invitation not found.", 404, ErrorCode.INVITATION_NOT_FOUND);
+    }
+
+    if (invite.status !== "PENDING") {
+      throw new AppError(`Cannot revoke an invitation that is already ${invite.status.toLowerCase()}.`, 400, ErrorCode.VALIDATION_ERROR);
+    }
+
+    const updated = await prisma.invitation.update({
+      where: { id: inviteId },
+      data: { status: "REVOKED" },
+    });
+
+    await AuditService.log({
+      patientId,
+      actorUserId,
+      action: "CARE_CIRCLE_INVITATION_REVOKED",
+      resourceType: "invitation",
+      resourceId: inviteId,
+    });
+
+    return updated;
+  }
+
+  /**
+   * Rejects an invitation code by the invited person.
+   */
+  static async rejectInvite(userId: string, inviteCode: string) {
+    const invitation = await prisma.invitation.findUnique({
+      where: { inviteCode },
+    });
+
+    if (!invitation) {
+      throw new AppError("Invalid invitation code.", 404, ErrorCode.INVITATION_NOT_FOUND);
+    }
+
+    if (invitation.status !== "PENDING") {
+      throw new AppError(`Invitation has already been ${invitation.status.toLowerCase()}.`, 400, ErrorCode.VALIDATION_ERROR);
+    }
+
+    const updated = await prisma.invitation.update({
+      where: { id: invitation.id },
+      data: { status: "REJECTED" },
+    });
+
+    await AuditService.log({
+      patientId: invitation.patientId,
+      actorUserId: userId,
+      action: "CARE_CIRCLE_INVITATION_REJECTED",
+      resourceType: "invitation",
+      resourceId: invitation.id,
+    });
+
+    return { message: "Invitation declined successfully." };
+  }
+
+  /**
    * Accepts an invitation code and joins the patient's Care Circle.
    */
   static async joinCareCircle(userId: string, inviteCode: string) {
@@ -89,7 +175,6 @@ export class CareCircleService {
       throw new AppError("This invitation code has expired. Please request a new invite.", 410, ErrorCode.INVITATION_EXPIRED);
     }
 
-    // Check if user is already an active member
     const existingMembership = await prisma.careCircleMembership.findUnique({
       where: {
         patientId_userId: {
@@ -106,13 +191,11 @@ export class CareCircleService {
     const permissions = (invitation.permissionsPreset as Record<string, boolean>) || {};
 
     const result = await prisma.$transaction(async (tx) => {
-      // Mark invitation as accepted
       await tx.invitation.update({
         where: { id: invitation.id },
         data: { status: "ACCEPTED" },
       });
 
-      // Upsert membership
       const membership = await tx.careCircleMembership.upsert({
         where: {
           patientId_userId: {
@@ -143,7 +226,6 @@ export class CareCircleService {
         },
       });
 
-      // Grant consent record
       await tx.patientConsent.create({
         data: {
           patientId: invitation.patientId,
@@ -169,6 +251,50 @@ export class CareCircleService {
   }
 
   /**
+   * Updates an existing member's role and permission settings.
+   */
+  static async updateMemberPermissions(
+    patientId: string,
+    memberId: string,
+    input: UpdateMemberPermissionsInput,
+    actorUserId: string
+  ) {
+    const membership = await prisma.careCircleMembership.findUnique({
+      where: { id: memberId },
+    });
+
+    if (!membership || membership.patientId !== patientId) {
+      throw new AppError("Care Circle member not found.", 404, ErrorCode.NOT_FOUND);
+    }
+
+    const updated = await prisma.careCircleMembership.update({
+      where: { id: memberId },
+      data: {
+        ...(input.circleRole && { circleRole: input.circleRole as any }),
+        ...(input.relationshipLabel && { relationshipLabel: input.relationshipLabel }),
+        ...(input.canManageMedications !== undefined && { canManageMedications: input.canManageMedications }),
+        ...(input.canManageAppointments !== undefined && { canManageAppointments: input.canManageAppointments }),
+        ...(input.canViewVitals !== undefined && { canViewVitals: input.canViewVitals }),
+        ...(input.canViewRecords !== undefined && { canViewRecords: input.canViewRecords }),
+        ...(input.receiveEmergencyAlerts !== undefined && { receiveEmergencyAlerts: input.receiveEmergencyAlerts }),
+        ...(input.receiveMissedDoseCalls !== undefined && { receiveMissedDoseCalls: input.receiveMissedDoseCalls }),
+      },
+    });
+
+    await AuditService.log({
+      patientId,
+      actorUserId,
+      action: "MEMBER_PERMISSIONS_UPDATED",
+      resourceType: "care_circle_membership",
+      resourceId: memberId,
+      previousState: membership,
+      newState: updated,
+    });
+
+    return updated;
+  }
+
+  /**
    * Revokes a member's access to the patient profile.
    */
   static async revokeMembership(patientId: string, memberId: string, actorUserId: string) {
@@ -180,7 +306,6 @@ export class CareCircleService {
       throw new AppError("Care Circle member not found.", 404, ErrorCode.NOT_FOUND);
     }
 
-    // Do not allow revoking the primary family administrator if they are the only admin
     if (membership.circleRole === "FAMILY_ADMIN") {
       const adminCount = await prisma.careCircleMembership.count({
         where: { patientId, circleRole: "FAMILY_ADMIN", isActive: true },
@@ -191,13 +316,11 @@ export class CareCircleService {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      // Deactivate membership
       const updated = await tx.careCircleMembership.update({
         where: { id: memberId },
         data: { isActive: false },
       });
 
-      // Mark all consents revoked
       await tx.patientConsent.updateMany({
         where: {
           patientId,
@@ -225,6 +348,85 @@ export class CareCircleService {
     });
 
     return result;
+  }
+
+  /**
+   * Retrieves all consent records for a patient.
+   */
+  static async getPatientConsents(patientId: string) {
+    return prisma.patientConsent.findMany({
+      where: { patientId },
+      include: {
+        grantedToUser: {
+          select: { id: true, fullName: true, email: true, phoneNumber: true, systemRole: true },
+        },
+      },
+      orderBy: { grantedAt: "desc" },
+    });
+  }
+
+  /**
+   * Grants an explicit patient consent record.
+   */
+  static async grantConsent(patientId: string, input: GrantConsentInput, actorUserId: string) {
+    const consent = await prisma.patientConsent.create({
+      data: {
+        patientId,
+        grantedToUserId: input.grantedToUserId,
+        consentType: input.consentType as any,
+        status: "GRANTED",
+        digitalSignatureHash: input.digitalSignatureHash || null,
+      },
+      include: {
+        grantedToUser: {
+          select: { id: true, fullName: true },
+        },
+      },
+    });
+
+    await AuditService.log({
+      patientId,
+      actorUserId,
+      action: "PATIENT_CONSENT_GRANTED",
+      resourceType: "patient_consent",
+      resourceId: consent.id,
+      newState: input,
+    });
+
+    return consent;
+  }
+
+  /**
+   * Revokes a specific consent record.
+   */
+  static async revokeConsent(patientId: string, consentId: string, reason: string, actorUserId: string) {
+    const consent = await prisma.patientConsent.findUnique({
+      where: { id: consentId },
+    });
+
+    if (!consent || consent.patientId !== patientId) {
+      throw new AppError("Consent record not found.", 404, ErrorCode.NOT_FOUND);
+    }
+
+    const updated = await prisma.patientConsent.update({
+      where: { id: consentId },
+      data: {
+        status: "REVOKED",
+        revokedAt: new Date(),
+        revocationReason: reason,
+      },
+    });
+
+    await AuditService.log({
+      patientId,
+      actorUserId,
+      action: "PATIENT_CONSENT_REVOKED",
+      resourceType: "patient_consent",
+      resourceId: consentId,
+      newState: { status: "REVOKED", reason },
+    });
+
+    return updated;
   }
 
   /**

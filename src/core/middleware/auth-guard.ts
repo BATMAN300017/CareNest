@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { verifyAccessToken } from "../security/jwt";
+import { verifyAccessToken, hashToken } from "../security/jwt";
+import { prisma } from "../database/prisma";
 import { AppError, ErrorCode } from "../errors/app-error";
 import { AuthTokenPayload } from "../types/auth";
 
@@ -9,6 +10,7 @@ export interface AuthenticatedRequestContext {
 
 /**
  * Extracts and verifies Bearer token from the incoming Next.js Request.
+ * Also checks if the token has been revoked on logout.
  */
 export async function authenticateRequest(request: NextRequest): Promise<AuthTokenPayload> {
   const authHeader = request.headers.get("authorization");
@@ -21,7 +23,19 @@ export async function authenticateRequest(request: NextRequest): Promise<AuthTok
     throw new AppError("Invalid authorization header format (expected 'Bearer <token>')", 401, ErrorCode.UNAUTHORIZED);
   }
 
-  return verifyAccessToken(token);
+  const payload = await verifyAccessToken(token);
+
+  // Check if token has been revoked on logout
+  const tokenHash = hashToken(token);
+  const isRevoked = await prisma.revokedToken.findUnique({
+    where: { tokenHash },
+  });
+
+  if (isRevoked) {
+    throw new AppError("Session has been invalidated. Please log in again.", 401, ErrorCode.UNAUTHORIZED);
+  }
+
+  return payload;
 }
 
 /**

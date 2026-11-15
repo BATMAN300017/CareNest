@@ -1,4 +1,5 @@
 import { SignJWT, jwtVerify } from "jose";
+import crypto from "crypto";
 import { AuthTokenPayload, AuthenticatedUser } from "../types/auth";
 import { AppError, ErrorCode } from "../errors/app-error";
 
@@ -94,4 +95,11 @@ export async function verifyRefreshToken(token: string): Promise<AuthTokenPayloa
     }
     throw new AppError("Invalid refresh token.", 401, ErrorCode.INVALID_TOKEN);
   }
+}
+
+/**
+ * Computes SHA-256 hash of a JWT for secure token revocation storage.
+ */
+export function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
 }

@@ -61,12 +61,92 @@ Standard Success Response Envelope:
 - **Purpose**: Authenticates user via email/phone and password.
 - **Request Body**: `{ "identifier": "sarah.jenkins@example.com", "password": "SecurePassword123!" }`
 - **Response**: `200 OK` with JWT, user profile, and associated Care Circle patients.
+- **Protection**: IP & account rate-limiting with 5-attempt brute-force lockout (15 minutes).
 
-### 1.3 Senior Tablet Quick PIN Unlock
+### 1.3 Logout / Session Invalidation
+- **Method / URL**: `POST /api/v1/auth/logout`
+- **Purpose**: Revokes current JWT session token by persisting its SHA-256 hash in `RevokedToken` table.
+- **Authentication**: Bearer Token.
+- **Response**: `200 OK`
+  ```json
+  { "success": true, "data": { "message": "Logged out successfully" } }
+  ```
+
+### 1.4 Request Password Recovery (Forgot Password)
+- **Method / URL**: `POST /api/v1/auth/forgot-password`
+- **Purpose**: Generates a single-use 32-byte hex reset token (stored as SHA-256 hash) with 1-hour expiration.
+- **Authentication**: Public (Rate-limited to 3 requests per 15 minutes).
+- **Anti-Enumeration**: Returns identical generic success response whether account exists or not.
+- **Request Body**: `{ "identifier": "user@example.com" }`
+- **Response**: `200 OK`
+  ```json
+  { "success": true, "data": { "message": "If an account matches that identifier, password reset instructions have been issued." } }
+  ```
+
+### 1.5 Reset Password
+- **Method / URL**: `POST /api/v1/auth/reset-password`
+- **Purpose**: Verifies recovery token hash, updates user password hash, invalidates token (`usedAt`), and resets lockout counters.
+- **Authentication**: Public.
+- **Request Body**: `{ "token": "4a7b...", "new_password": "NewStrongPassword456!" }`
+- **Response**: `200 OK`
+  ```json
+  { "success": true, "data": { "message": "Password has been successfully reset. Please log in with your new password." } }
+  ```
+
+### 1.6 Refresh Access Token
+- **Method / URL**: `POST /api/v1/auth/refresh`
+- **Purpose**: Exchanges a valid refresh token for a newly issued access token.
+- **Request Body**: `{ "refresh_token": "valid_refresh_token" }`
+- **Response**: `200 OK` with newly generated JWT access token.
+
+### 1.7 Senior Tablet Quick PIN Unlock
 - **Method / URL**: `POST /api/v1/auth/tablet-unlock`
 - **Purpose**: Allows an elderly patient on a bound tablet kiosk to unlock their daily dashboard with a 4-digit PIN.
 - **Request Body**: `{ "device_fingerprint": "kiosk_tablet_livingroom", "passcode": "1948" }`
 - **Response**: `200 OK` with scoped ephemeral session token (read dashboard, confirm dose only).
+
+---
+
+## 1.8 User Profile & Account Management (`/api/v1/users/me`)
+
+### 1.8.1 Get Current User Profile
+- **Method / URL**: `GET /api/v1/users/me`
+- **Authentication**: Bearer Token.
+- **Response**: `200 OK`
+  ```json
+  {
+    "id": "usr_uuid",
+    "email": "sarah.jenkins@example.com",
+    "fullName": "Sarah Jenkins",
+    "phoneNumber": "+15552345678",
+    "systemRole": "FAMILY_ADMIN",
+    "avatarUrl": null,
+    "preferences": { "textSize": "LARGE", "highContrastMode": false },
+    "accountStatus": "ACTIVE"
+  }
+  ```
+
+### 1.8.2 Update User Profile
+- **Method / URL**: `PATCH /api/v1/users/me`
+- **Authentication**: Bearer Token.
+- **Request Body**:
+  ```json
+  {
+    "full_name": "Sarah Jenkins, RN",
+    "phone_number": "+15559876543",
+    "preferences": { "textSize": "DEFAULT", "highContrastMode": true }
+  }
+  ```
+- **Response**: `200 OK` with updated profile.
+
+### 1.8.3 Change Password
+- **Method / URL**: `POST /api/v1/users/me/change-password`
+- **Authentication**: Bearer Token.
+- **Request Body**: `{ "current_password": "OldPassword123!", "new_password": "NewPassword456!" }`
+- **Response**: `200 OK`
+  ```json
+  { "success": true, "data": { "message": "Password changed successfully" } }
+  ```
 
 ---
 
@@ -149,9 +229,33 @@ Standard Success Response Envelope:
 
 ## 3. Care Circle & Collaboration (`/api/v1/patients/:patientId/care-circle`)
 
-### 3.1 Invite Member to Care Circle
+### 3.1 List Pending Invitations
+- **Method / URL**: `GET /api/v1/patients/:patientId/care-circle/invites`
+- **Purpose**: Lists all pending, unexpired invitations for a patient.
+- **Authentication**: Bearer Token.
+- **Permissions**: Patient or `FAMILY_ADMIN`.
+- **Response**: `200 OK`
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "id": "inv_uuid",
+        "inviteCode": "CN-894215",
+        "inviteeEmail": "nurse.elena@homehealth.org",
+        "inviteePhone": "+15557778888",
+        "role": "NURSE",
+        "status": "PENDING",
+        "expiresAt": "2026-11-22T14:30:00.000Z"
+      }
+    ]
+  }
+  ```
+
+### 3.2 Create Care Circle Invitation
 - **Method / URL**: `POST /api/v1/patients/:patientId/care-circle/invites`
-- **Purpose**: Issues a 6-digit invitation code or email link to an invited family member or nurse.
+- **Purpose**: Issues a 7-day TTL formatted code (`CN-XXXXXX`) to invite family members or caregivers.
+- **Authentication**: Bearer Token.
 - **Permissions**: `FAMILY_ADMIN` or Patient.
 - **Request Body**:
   ```json
@@ -167,17 +271,92 @@ Standard Success Response Envelope:
     }
   }
   ```
-- **Response**: `201 Created` with invite code and expiration timestamp.
+- **Response**: `201 Created` with invite code, expiration timestamp, and permission preset.
 
-### 3.2 Join Care Circle via Code
-- **Method / URL**: `POST /api/v1/care-circle/join`
-- **Request Body**: `{ "invite_code": "CN-894215" }`
-- **Response**: `200 OK` with membership confirmation.
+### 3.3 Revoke / Cancel Pending Invitation
+- **Method / URL**: `DELETE /api/v1/patients/:patientId/care-circle/invites/:inviteId`
+- **Purpose**: Revokes an unaccepted invitation before expiration.
+- **Authentication**: Bearer Token.
+- **Permissions**: `FAMILY_ADMIN` or Patient.
+- **Response**: `200 OK`
+  ```json
+  { "success": true, "data": { "message": "Invitation revoked successfully" } }
+  ```
 
-### 3.3 Revoke Member Access
+### 3.4 Accept Care Circle Invitation
+- **Method / URL**: `POST /api/v1/care-circle/invites/:inviteCode/accept`
+- **Purpose**: Authenticated user redeems an active invitation code, creating Care Circle membership and patient consent records.
+- **Authentication**: Bearer Token.
+- **Response**: `200 OK`
+  ```json
+  { "success": true, "data": { "membership": { ... }, "message": "Successfully joined Care Circle" } }
+  ```
+
+### 3.5 Reject Care Circle Invitation
+- **Method / URL**: `POST /api/v1/care-circle/invites/:inviteCode/reject`
+- **Purpose**: Marks invitation as `REJECTED`, preventing future activation.
+- **Authentication**: Bearer Token.
+- **Response**: `200 OK`
+  ```json
+  { "success": true, "data": { "message": "Invitation rejected" } }
+  ```
+
+### 3.6 Update Member Granular Permissions
+- **Method / URL**: `PATCH /api/v1/patients/:patientId/care-circle/members/:memberId/permissions`
+- **Purpose**: Fine-tunes granular permission flags for an active member.
+- **Authentication**: Bearer Token.
+- **Permissions**: `FAMILY_ADMIN` or Patient.
+- **Request Body**:
+  ```json
+  {
+    "can_manage_medications": true,
+    "can_manage_appointments": false,
+    "can_view_vitals": true
+  }
+  ```
+- **Response**: `200 OK` with updated membership.
+
+### 3.7 Revoke Member Access
 - **Method / URL**: `DELETE /api/v1/patients/:patientId/care-circle/members/:memberId`
+- **Purpose**: Deactivates Care Circle membership and revokes all active consents.
 - **Permissions**: Patient or `FAMILY_ADMIN`.
-- **Response**: `200 OK`. Immediately invalidates active tokens for that patient context and writes an audit event.
+- **Response**: `200 OK`. Immediately invalidates active tokens and writes audit records.
+
+---
+
+## 3.8 Patient Consent Management (`/api/v1/patients/:patientId/consents`)
+
+### 3.8.1 List Active Patient Consents
+- **Method / URL**: `GET /api/v1/patients/:patientId/consents`
+- **Purpose**: Returns all active and historical consent records for the patient.
+- **Authentication**: Bearer Token.
+- **Permissions**: Patient or `FAMILY_ADMIN`.
+- **Response**: `200 OK` with consent records list.
+
+### 3.8.2 Explicitly Grant Consent
+- **Method / URL**: `POST /api/v1/patients/:patientId/consents`
+- **Purpose**: Patient or legal surrogate grants specific consent scope to a caregiver/family member.
+- **Authentication**: Bearer Token.
+- **Permissions**: Patient or `FAMILY_ADMIN`.
+- **Request Body**:
+  ```json
+  {
+    "grantee_id": "usr_caregiver_uuid",
+    "consent_type": "MEDICATION_MANAGEMENT",
+    "expires_at": "2027-11-15T00:00:00.000Z"
+  }
+  ```
+- **Response**: `201 Created` with newly created consent.
+
+### 3.8.3 Revoke Patient Consent
+- **Method / URL**: `DELETE /api/v1/patients/:patientId/consents/:consentId`
+- **Purpose**: Immediately revokes patient consent and invalidates ongoing authorized actions.
+- **Authentication**: Bearer Token.
+- **Permissions**: Patient or `FAMILY_ADMIN`.
+- **Response**: `200 OK`
+  ```json
+  { "success": true, "data": { "message": "Consent successfully revoked" } }
+  ```
 
 ---
 

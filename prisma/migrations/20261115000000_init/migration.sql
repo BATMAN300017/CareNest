@@ -11,7 +11,7 @@ CREATE TYPE "ConsentType" AS ENUM ('FULL_HEALTHCARE_PROXY', 'MEDICATION_MANAGEME
 CREATE TYPE "ConsentStatus" AS ENUM ('GRANTED', 'REVOKED', 'EXPIRED');
 
 -- CreateEnum
-CREATE TYPE "InviteStatus" AS ENUM ('PENDING', 'ACCEPTED', 'EXPIRED', 'REVOKED');
+CREATE TYPE "InviteStatus" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'REVOKED');
 
 -- CreateEnum
 CREATE TYPE "DosageForm" AS ENUM ('TABLET', 'CAPSULE', 'LIQUID', 'INHALER', 'INJECTION', 'PATCH', 'DROPS');
@@ -438,6 +438,29 @@ CREATE TABLE "device_registrations" (
     CONSTRAINT "device_registrations_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "password_reset_tokens" (
+    "id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "token_hash" TEXT NOT NULL,
+    "expires_at" TIMESTAMP(3) NOT NULL,
+    "used_at" TIMESTAMP(3),
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "password_reset_tokens_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "revoked_tokens" (
+    "id" TEXT NOT NULL,
+    "token_hash" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "expires_at" TIMESTAMP(3) NOT NULL,
+    "revoked_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "revoked_tokens_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
@@ -555,6 +578,21 @@ CREATE UNIQUE INDEX "device_registrations_device_fingerprint_key" ON "device_reg
 -- CreateIndex
 CREATE INDEX "device_registrations_user_id_idx" ON "device_registrations"("user_id");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "password_reset_tokens_token_hash_key" ON "password_reset_tokens"("token_hash");
+
+-- CreateIndex
+CREATE INDEX "password_reset_tokens_user_id_idx" ON "password_reset_tokens"("user_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "revoked_tokens_token_hash_key" ON "revoked_tokens"("token_hash");
+
+-- CreateIndex
+CREATE INDEX "revoked_tokens_token_hash_idx" ON "revoked_tokens"("token_hash");
+
+-- CreateIndex
+CREATE INDEX "revoked_tokens_user_id_idx" ON "revoked_tokens"("user_id");
+
 -- AddForeignKey
 ALTER TABLE "patients" ADD CONSTRAINT "patients_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -671,4 +709,10 @@ ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_actor_user_id_fkey" FOREIGN 
 
 -- AddForeignKey
 ALTER TABLE "device_registrations" ADD CONSTRAINT "device_registrations_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "revoked_tokens" ADD CONSTRAINT "revoked_tokens_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
