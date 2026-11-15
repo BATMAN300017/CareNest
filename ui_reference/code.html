@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareNest Health - Daily Care &amp; Medication Dashboard</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Plus Jakarta Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS with Forms & Container Queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration Verbatim -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-primary-fixed-variant": "#00513b",
+            "on-error": "#ffffff",
+            "on-background": "#141d23",
+            "inverse-primary": "#8cd5b7",
+            "secondary-fixed-dim": "#adc8f5",
+            "secondary-fixed": "#d5e3ff",
+            "inverse-surface": "#293138",
+            "surface-container": "#e6eff8",
+            "on-tertiary-container": "#ffd0ad",
+            "secondary-container": "#b5d0fd",
+            "tertiary-fixed": "#ffdcc3",
+            "error": "#ba1a1a",
+            "surface-dim": "#d2dbe4",
+            "on-error-container": "#93000a",
+            "on-secondary-fixed-variant": "#2d486d",
+            "background": "#f6faff",
+            "surface-container-low": "#ebf5fe",
+            "on-surface": "#141d23",
+            "on-secondary": "#ffffff",
+            "surface-container-high": "#e0e9f2",
+            "on-tertiary-fixed-variant": "#6e3900",
+            "secondary": "#455f87",
+            "tertiary-container": "#914d00",
+            "error-container": "#ffdad6",
+            "on-tertiary": "#ffffff",
+            "primary-container": "#1e6b52",
+            "inverse-on-surface": "#e9f2fb",
+            "on-secondary-fixed": "#001c3b",
+            "outline-variant": "#bfc9c2",
+            "outline": "#6f7974",
+            "on-primary-fixed": "#002116",
+            "surface": "#f6faff",
+            "primary": "#00523c",
+            "on-primary-container": "#9ee9c9",
+            "tertiary": "#6e3900",
+            "primary-fixed": "#a7f2d2",
+            "surface-bright": "#f6faff",
+            "tertiary-fixed-dim": "#ffb77d",
+            "primary-fixed-dim": "#8cd5b7",
+            "on-secondary-container": "#3e5980",
+            "surface-variant": "#dae4ed",
+            "surface-container-highest": "#dae4ed",
+            "on-tertiary-fixed": "#2f1500",
+            "on-surface-variant": "#3f4944",
+            "on-primary": "#ffffff",
+            "surface-tint": "#1d6a51",
+            "surface-container-lowest": "#ffffff"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "gutter": "1.5rem",
+            "margin-mobile": "1.25rem",
+            "space-md": "1.25rem",
+            "gutter-mobile": "1rem",
+            "space-xl": "2.5rem",
+            "space-xs": "0.375rem",
+            "space-lg": "1.75rem",
+            "margin": "2.5rem",
+            "space-sm": "0.75rem"
+          },
+          "fontFamily": {
+            "headline-lg-mobile": ["Plus Jakarta Sans"],
+            "headline-md": ["Plus Jakarta Sans"],
+            "label-sm": ["Plus Jakarta Sans"],
+            "headline-xl-mobile": ["Plus Jakarta Sans"],
+            "headline-lg": ["Plus Jakarta Sans"],
+            "body-xl": ["Plus Jakarta Sans"],
+            "body-lg": ["Plus Jakarta Sans"],
+            "headline-sm": ["Plus Jakarta Sans"],
+            "label-md": ["Plus Jakarta Sans"],
+            "headline-xl": ["Plus Jakarta Sans"],
+            "body-md": ["Plus Jakarta Sans"],
+            "label-lg": ["Plus Jakarta Sans"]
+          },
+          "fontSize": {
+            "headline-lg-mobile": ["26px", { "lineHeight": "36px", "fontWeight": "700" }],
+            "headline-md": ["24px", { "lineHeight": "34px", "fontWeight": "600" }],
+            "label-sm": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+            "headline-xl-mobile": ["32px", { "lineHeight": "42px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "headline-lg": ["32px", { "lineHeight": "42px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "body-xl": ["20px", { "lineHeight": "32px", "fontWeight": "400" }],
+            "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+            "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+            "label-md": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+            "headline-xl": ["40px", { "lineHeight": "52px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+            "label-lg": ["18px", { "lineHeight": "26px", "fontWeight": "600" }]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    .material-symbols-fill {
+      font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24;
+    }
+    /* Subtle custom warmth elevation from design token specs */
+    .warm-card-shadow {
+      box-shadow: 0 4px 16px -2px rgba(43, 52, 59, 0.05), 0 2px 6px -1px rgba(43, 52, 59, 0.03);
+    }
+    .warm-active-shadow {
+      box-shadow: 0 8px 24px -4px rgba(30, 107, 82, 0.14), 0 4px 12px -2px rgba(43, 52, 59, 0.05);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface antialiased min-h-screen flex selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- ========================================================================= -->
+<!-- LEFT PERSISTENT SIDEBAR (Strictly follows Shared Components JSON)        -->
+<!-- ========================================================================= -->
+<aside class="fixed left-0 top-0 h-screen w-72 flex flex-col justify-between p-6 z-30 bg-surface-container-low shadow-sm">
+<!-- Brand / Platform Header -->
+<div class="flex flex-col gap-6">
+<div class="flex items-center gap-3.5 px-2">
+<div class="w-12 h-12 rounded-xl bg-primary text-on-primary flex items-center justify-center shadow-md">
+<span class="material-symbols-outlined text-3xl material-symbols-fill">nest_eco_leaf</span>
+</div>
+<div>
+<span class="font-headline-md text-headline-md text-primary font-bold block leading-tight">CareNest</span>
+<span class="font-body-md text-body-md text-on-surface-variant font-medium">Senior Care Platform</span>
+</div>
+</div>
+<!-- Navigation Menu -->
+<nav aria-label="Main Navigation" class="flex flex-col gap-2 pt-2">
+<!-- Tab 1: Today's Schedule (ACTIVE - strictly matches label & style_active_navigation) -->
+<a class="flex items-center gap-4 px-5 py-4 bg-primary text-on-primary rounded-xl font-bold shadow-sm transition-all duration-150 min-h-[56px] active:scale-[0.98]" href="#schedule">
+<span class="material-symbols-outlined text-2xl material-symbols-fill">calendar_today</span>
+<span class="font-label-lg text-label-lg tracking-normal">Today's Schedule</span>
+</a>
+<!-- Tab 2: My Medications -->
+<a class="flex items-center gap-4 px-5 py-4 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-xl font-medium transition-colors duration-200 min-h-[56px] active:scale-[0.98]" href="#medications">
+<span class="material-symbols-outlined text-2xl">medication</span>
+<span class="font-label-lg text-label-lg">My Medications</span>
+</a>
+<!-- Tab 3: Doctor Appointments -->
+<a class="flex items-center gap-4 px-5 py-4 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-xl font-medium transition-colors duration-200 min-h-[56px] active:scale-[0.98]" href="#appointments">
+<span class="material-symbols-outlined text-2xl">medical_services</span>
+<span class="font-label-lg text-label-lg">Doctor Appointments</span>
+</a>
+<!-- Tab 4: Care Circle & Messages -->
+<a class="flex items-center gap-4 px-5 py-4 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-xl font-medium transition-colors duration-200 min-h-[56px] active:scale-[0.98]" href="#carecircle">
+<span class="material-symbols-outlined text-2xl">group</span>
+<span class="font-label-lg text-label-lg">Care Circle &amp; Messages</span>
+</a>
+<!-- Tab 5: Health Vitals -->
+<a class="flex items-center gap-4 px-5 py-4 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-xl font-medium transition-colors duration-200 min-h-[56px] active:scale-[0.98]" href="#vitals">
+<span class="material-symbols-outlined text-2xl">favorite</span>
+<span class="font-label-lg text-label-lg">Health Vitals</span>
+</a>
+<!-- Tab 6: Support -->
+<a class="flex items-center gap-4 px-5 py-4 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-xl font-medium transition-colors duration-200 min-h-[56px] active:scale-[0.98]" href="#support">
+<span class="material-symbols-outlined text-2xl">help</span>
+<span class="font-label-lg text-label-lg">Support</span>
+</a>
+</nav>
+</div>
+<!-- Sidebar Bottom: Accessibility Settings & Urgent Call CTA -->
+<div class="flex flex-col gap-4 border-t border-outline-variant/30 pt-4">
+<button class="flex items-center gap-4 px-5 py-3.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-xl font-medium transition-colors duration-200 min-h-[56px] active:scale-[0.98] w-full text-left" type="button">
+<span class="material-symbols-outlined text-2xl">accessibility_new</span>
+<span class="font-label-lg text-label-lg">Accessibility Settings</span>
+</button>
+<!-- Urgent Help Call Button from JSON CTA -->
+<button class="w-full min-h-[56px] bg-error hover:bg-error/90 active:scale-[0.98] text-on-error rounded-xl font-bold px-4 py-3 flex items-center justify-center gap-3 shadow-md transition-all" type="button">
+<span class="material-symbols-outlined text-2xl material-symbols-fill">emergency</span>
+<span class="font-label-lg text-label-lg">Urgent Help Call</span>
+</button>
+</div>
+</aside>
+<!-- ========================================================================= -->
+<!-- MAIN APP CANVAS (Offset by 72 sidebar = 18rem / 288px)                    -->
+<!-- ========================================================================= -->
+<div class="flex-1 ml-72 flex flex-col min-h-screen">
+<!-- TopNavBar (Matches Shared Components JSON) -->
+<header class="w-full h-20 px-8 flex justify-between items-center z-40 bg-surface-container-lowest shadow-sm sticky top-0">
+<!-- Greeting and Date Anchor -->
+<div class="flex items-center gap-5">
+<div>
+<h1 class="font-headline-md text-headline-md text-primary font-bold tracking-tight flex items-center gap-2">
+<span>Good Morning, Margaret!</span>
+<span aria-label="Sun behind cloud" class="text-2xl" role="img">🌤️</span>
+</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Thursday, October 24 • Sunny 68°F</p>
+</div>
+<!-- Caretaker Sync Pill Indicator -->
+<div class="hidden xl:flex items-center gap-2.5 px-4 py-2 bg-surface-container-low border border-primary/20 rounded-full">
+<span class="relative flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-container opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+</span>
+<span class="font-label-sm text-label-sm text-primary font-semibold">Sarah &amp; Nurse Elena connected (3m ago)</span>
+</div>
+</div>
+<!-- Trailing Action Cluster: Accessibility tools & Emergency SOS -->
+<div class="flex items-center gap-3">
+<!-- Font Sizing Buttons [A- / A+] -->
+<div aria-label="Text size adjustment" class="flex items-center bg-surface-container rounded-xl p-1 border border-outline-variant/40" role="group">
+<button aria-label="Decrease text size" class="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-surface-container-lowest text-on-surface font-bold text-base transition-colors" id="font-decrease" title="Decrease Text Size" type="button">
+            A-
+          </button>
+<div class="w-px h-6 bg-outline-variant/40"></div>
+<button aria-label="Increase text size" class="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-surface-container-lowest text-on-surface font-bold text-lg transition-colors" id="font-increase" title="Increase Text Size" type="button">
+            A+
+          </button>
+</div>
+<!-- Read Screen Aloud Button -->
+<button aria-label="Read Screen Aloud" class="min-h-[56px] px-5 py-2.5 bg-surface-container hover:bg-surface-container-high rounded-xl text-primary font-bold flex items-center gap-2.5 transition-colors border border-outline-variant/30 active:scale-[0.98]" id="read-aloud-btn" type="button">
+<span class="material-symbols-outlined text-2xl text-primary material-symbols-fill">hearing</span>
+<span class="font-label-lg text-label-lg">Read Aloud</span>
+</button>
+<!-- Emergency SOS Primary Action -->
+<button aria-label="Emergency SOS 1-Click Call" class="min-h-[56px] px-6 py-2.5 bg-error hover:bg-red-700 text-on-error rounded-xl font-bold flex items-center gap-2.5 shadow-md transition-all active:scale-[0.98]" type="button">
+<span class="material-symbols-outlined text-2xl material-symbols-fill">emergency</span>
+<span class="font-label-lg text-label-lg tracking-wide">Emergency SOS</span>
+</button>
+</div>
+</header>
+<!-- Main Content Container (Max width 1280px, responsive padding) -->
+<main class="flex-1 p-8 max-w-[1360px] w-full mx-auto">
+<!-- HERO ANNOUNCEMENT: Warm Daily Progress Ring & Reassurance Card -->
+<section class="mb-8 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 p-7 warm-card-shadow flex flex-col md:flex-row items-center justify-between gap-6">
+<div class="flex items-center gap-6">
+<!-- Circular Progress Ring (60% completed: 3 of 5) -->
+<div class="relative w-24 h-24 flex-shrink-0 flex items-center justify-center">
+<svg class="w-24 h-24 transform -rotate-90" viewbox="0 0 96 96">
+<circle class="text-surface-container fill-none" cx="48" cy="48" r="40" stroke="currentColor" stroke-width="10"></circle>
+<circle class="text-primary fill-none transition-all duration-1000 ease-out" cx="48" cy="48" r="40" stroke="currentColor" stroke-dasharray="251.2" stroke-dashoffset="100.48" stroke-linecap="round" stroke-width="10"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+<span class="font-headline-sm text-headline-sm font-bold text-primary">3 / 5</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium leading-none">Doses</span>
+</div>
+</div>
+<div>
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-fixed text-on-primary-fixed font-semibold text-sm mb-1.5">
+<span class="material-symbols-outlined text-base material-symbols-fill">sentiment_satisfied</span>
+<span>On Track Today</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">You have 3 out of 5 medications completed today.</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Wonderful job, Margaret! Your next scheduled dose is ready right now for your warm lunch.</p>
+</div>
+</div>
+<!-- Quick Voice / Help Prompt Pill -->
+<div class="flex-shrink-0 bg-surface-container-low px-5 py-4 rounded-xl border border-primary/20 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl material-symbols-fill">mic</span>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Voice Assistant Active</p>
+<p class="font-label-lg text-label-lg font-bold text-primary">Say "Hey CareNest, mark as taken"</p>
+</div>
+</div>
+</section>
+<!-- TWO-COLUMN DASHBOARD GRID (Hero Center Medication Stream & Right Care Circle Stream) -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+<!-- LEFT / CENTER COLUMN: Daily Medication Journey (8 Columns on XL) -->
+<section aria-label="Daily Medication Routine" class="xl:col-span-8 space-y-6">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-3xl text-primary material-symbols-fill">schedule</span>
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">Today's Medication Journey</h2>
+</div>
+<span class="font-label-lg text-label-lg text-on-surface-variant font-medium">Sorted chronologically</span>
+</div>
+<!-- TIME CHUNK 1: MORNING (8:00 AM) - COMPLETED -->
+<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 warm-card-shadow p-6 transition-all">
+<div class="flex items-center justify-between mb-4 pb-3 border-b border-outline-variant/20">
+<div class="flex items-center gap-3">
+<span class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-primary font-bold">
+<span class="material-symbols-outlined text-2xl">wb_twilight</span>
+</span>
+<div>
+<h3 class="font-headline-sm text-headline-sm font-bold text-on-surface">Morning Routine</h3>
+<span class="font-body-md text-body-md text-on-surface-variant">Scheduled for 8:00 AM</span>
+</div>
+</div>
+<span class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary-fixed text-on-primary-fixed font-bold text-sm">
+<span class="material-symbols-outlined text-lg material-symbols-fill">check_circle</span>
+                Completed at 8:12 AM
+              </span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Medication Item 1 -->
+<div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex items-start gap-4">
+<!-- Visual Pill Badge -->
+<div class="w-14 h-14 rounded-xl bg-surface-container-lowest border border-outline-variant/40 flex items-center justify-center flex-shrink-0">
+<div class="w-8 h-4 rounded-full bg-secondary-fixed border border-secondary flex items-center justify-center" title="Small Oval White/Blue Capsule">
+<div class="w-3 h-3 rounded-full bg-surface-container-lowest"></div>
+</div>
+</div>
+<div class="flex-1">
+<h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Lisinopril 10mg</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">1 Tablet for blood pressure</p>
+<p class="font-label-sm text-label-sm text-primary font-semibold mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-base">check</span> Taken with orange juice
+                  </p>
+</div>
+</div>
+<!-- Medication Item 2 -->
+<div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex items-start gap-4">
+<!-- Visual Pill Badge -->
+<div class="w-14 h-14 rounded-xl bg-surface-container-lowest border border-outline-variant/40 flex items-center justify-center flex-shrink-0">
+<div class="w-6 h-6 rounded-full bg-tertiary-fixed border border-tertiary-fixed-dim" title="Round Golden Softgel"></div>
+</div>
+<div class="flex-1">
+<h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Vitamin D3 2000 IU</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">1 Softgel with morning meal</p>
+<p class="font-label-sm text-label-sm text-primary font-semibold mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-base">check</span> Taken with toast
+                  </p>
+</div>
+</div>
+</div>
+</div>
+<!-- TIME CHUNK 2: AFTERNOON (1:00 PM) - DUE NOW (URGENT HIGHLIGHTED CARD) -->
+<div class="bg-surface-container-lowest rounded-2xl border-2 border-tertiary warm-active-shadow p-6 relative overflow-hidden">
+<!-- Warm Alert Banner / Accent Top Strip -->
+<div class="absolute top-0 left-0 right-0 h-2 bg-tertiary"></div>
+<div class="flex flex-wrap items-center justify-between gap-3 mb-5 pb-3 border-b border-outline-variant/20 pt-1">
+<div class="flex items-center gap-3">
+<span class="w-11 h-11 rounded-xl bg-tertiary-fixed text-on-tertiary-fixed-variant flex items-center justify-center font-bold">
+<span class="material-symbols-outlined text-2xl material-symbols-fill">light_mode</span>
+</span>
+<div>
+<div class="flex items-center gap-2">
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface">Afternoon Dose</h3>
+<span class="px-3 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-extrabold text-sm tracking-wide uppercase animate-pulse">
+                      Due Right Now
+                    </span>
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant">Scheduled for 1:00 PM (Lunchtime)</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-tertiary font-bold font-label-lg text-label-lg">
+<span class="material-symbols-outlined text-2xl">alarm</span>
+<span>Ready 12 minutes ago</span>
+</div>
+</div>
+<!-- Medicine Card Hero Spec -->
+<div class="p-6 rounded-xl bg-surface-container-low/60 border border-outline-variant/40 mb-6">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex items-start gap-5">
+<!-- Visual Pill Identifier: Large Oval White Pill -->
+<div class="w-20 h-20 rounded-2xl bg-surface-container-lowest border-2 border-outline-variant/50 shadow-sm flex flex-col items-center justify-center flex-shrink-0 p-2">
+<div class="w-12 h-6 rounded-full bg-white border-2 border-outline shadow-inner flex items-center justify-center">
+<div class="w-px h-4 bg-outline-variant"></div>
+</div>
+<span class="font-label-sm text-[11px] text-outline font-bold mt-1 uppercase">M 500</span>
+</div>
+<div>
+<div class="flex items-center gap-3">
+<h4 class="font-headline-lg text-headline-lg font-bold text-on-surface">Metformin 500mg</h4>
+<span class="px-3 py-0.5 rounded-full bg-surface-container text-secondary font-bold text-xs">Blood Sugar</span>
+</div>
+<p class="font-body-xl text-body-xl font-medium text-on-surface mt-1">1 White Oval Tablet • Take with warm meal</p>
+<p class="font-body-lg text-body-lg text-on-surface-variant flex items-center gap-2 mt-2">
+<span class="material-symbols-outlined text-2xl text-secondary">water_drop</span>
+<span>Drink with a full 8 oz glass of water to avoid stomach discomfort.</span>
+</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Primary 60px High Interaction Buttons (Senior Accessible WCAG AAA) -->
+<div class="flex flex-col sm:flex-row items-stretch gap-4">
+<!-- Big 'I Have Taken This' Button -->
+<button class="flex-1 min-h-[60px] bg-primary hover:bg-on-primary-fixed-variant active:scale-[0.98] text-on-primary rounded-xl font-headline-sm text-headline-sm flex items-center justify-center gap-3 shadow-lg transition-all focus:ring-4 focus:ring-primary-fixed" id="mark-taken-btn" type="button">
+<span class="material-symbols-outlined text-3xl material-symbols-fill">task_alt</span>
+<span>✓ I Have Taken This</span>
+</button>
+<!-- Secondary 'Remind me in 15 mins' Button -->
+<button class="min-h-[60px] px-8 bg-surface-container-lowest hover:bg-surface-container active:scale-[0.98] text-secondary border-2 border-secondary rounded-xl font-label-lg text-label-lg font-bold flex items-center justify-center gap-2 transition-all" type="button">
+<span class="material-symbols-outlined text-2xl">snooze</span>
+<span>Remind me in 15 mins</span>
+</button>
+</div>
+</div>
+<!-- TIME CHUNK 3: EVENING & NIGHT - UPCOMING -->
+<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 warm-card-shadow p-6">
+<div class="flex items-center justify-between mb-4 pb-3 border-b border-outline-variant/20">
+<div class="flex items-center gap-3">
+<span class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-secondary font-bold">
+<span class="material-symbols-outlined text-2xl">bedtime</span>
+</span>
+<div>
+<h3 class="font-headline-sm text-headline-sm font-bold text-on-surface">Later Tonight</h3>
+<span class="font-body-md text-body-md text-on-surface-variant">2 Upcoming doses</span>
+</div>
+</div>
+<span class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-surface-container text-on-surface-variant font-bold text-sm">
+<span class="material-symbols-outlined text-lg">schedule</span>
+                Upcoming
+              </span>
+</div>
+<div class="space-y-4">
+<!-- Evening 7:00 PM Dose -->
+<div class="p-4 rounded-xl bg-surface-container-low/40 border border-outline-variant/30 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-xl bg-surface-container-lowest border border-outline-variant/40 flex items-center justify-center flex-shrink-0">
+<div class="w-6 h-6 rounded-full bg-amber-200 border border-amber-400" title="Small Yellow Round Pill"></div>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Atorvastatin 20mg</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">(Cholesterol)</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">1 Small Yellow Round Pill • 7:00 PM with dinner</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="hidden md:inline-flex items-center gap-1 text-sm font-medium text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">restaurant</span> With meal
+                  </span>
+<button class="min-h-[48px] px-5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-sm transition-colors" type="button">
+                    View Details
+                  </button>
+</div>
+</div>
+<!-- Night 9:30 PM Dose -->
+<div class="p-4 rounded-xl bg-surface-container-low/40 border border-outline-variant/30 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-xl bg-surface-container-lowest border border-outline-variant/40 flex items-center justify-center flex-shrink-0">
+<div class="w-7 h-3.5 rounded-full bg-indigo-200 border border-indigo-400" title="Purple Sleep Tablet"></div>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Melatonin 3mg</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">(Sleep Aid)</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">1 Chewable Tablet • 9:30 PM (30 mins before sleep)</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="hidden md:inline-flex items-center gap-1 text-sm font-medium text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">bedtime</span> Bedtime
+                  </span>
+<button class="min-h-[48px] px-5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-sm transition-colors" type="button">
+                    View Details
+                  </button>
+</div>
+</div>
+</div>
+</div>
+<!-- DAILY HEALTH VITALS & ROUTINE TRACKING MODULE -->
+<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 warm-card-shadow p-6" id="vitals">
+<div class="flex items-center justify-between mb-5">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-3xl text-primary material-symbols-fill">monitor_heart</span>
+<h3 class="font-headline-lg text-headline-lg font-bold text-on-surface">Today's Health Vitals</h3>
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant font-medium">Logged wirelessly via Omron Hub</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+<!-- Vital 1: Blood Pressure -->
+<div class="p-5 rounded-xl bg-surface-container-low border border-outline-variant/30">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-md text-label-md text-on-surface-variant font-semibold">Blood Pressure</span>
+<span class="w-8 h-8 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-xl">favorite</span>
+</span>
+</div>
+<div class="font-headline-lg text-headline-lg font-bold text-on-surface">122/80 <span class="font-label-sm text-sm font-normal text-on-surface-variant">mmHg</span></div>
+<div class="mt-2 flex items-center gap-2">
+<span class="inline-block w-2.5 h-2.5 rounded-full bg-primary"></span>
+<span class="font-label-sm text-label-sm text-primary font-bold">Normal Range</span>
+<span class="text-xs text-on-surface-variant ml-auto">8:30 AM</span>
+</div>
+</div>
+<!-- Vital 2: Blood Glucose -->
+<div class="p-5 rounded-xl bg-surface-container-low border border-outline-variant/30">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-md text-label-md text-on-surface-variant font-semibold">Fasting Glucose</span>
+<span class="w-8 h-8 rounded-lg bg-surface-container-lowest flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-xl">bloodtype</span>
+</span>
+</div>
+<div class="font-headline-lg text-headline-lg font-bold text-on-surface">108 <span class="font-label-sm text-sm font-normal text-on-surface-variant">mg/dL</span></div>
+<div class="mt-2 flex items-center gap-2">
+<span class="inline-block w-2.5 h-2.5 rounded-full bg-primary"></span>
+<span class="font-label-sm text-label-sm text-primary font-bold">Stable &amp; Optimal</span>
+<span class="text-xs text-on-surface-variant ml-auto">7:45 AM</span>
+</div>
+</div>
+<!-- Vital 3: Hydration Glass Counter -->
+<div class="p-5 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-md text-label-md text-on-surface-variant font-semibold">Hydration Tracker</span>
+<span class="w-8 h-8 rounded-lg bg-surface-container-lowest flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-xl">water_drop</span>
+</span>
+</div>
+<div class="font-headline-lg text-headline-lg font-bold text-on-surface" id="hydration-count">4 of 6 <span class="font-label-sm text-sm font-normal text-on-surface-variant">Glasses</span></div>
+</div>
+<div class="mt-3 flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Target: 48 fl oz</span>
+<button aria-label="Log one glass of water" class="min-h-[44px] px-4 py-1.5 rounded-xl bg-secondary text-on-secondary hover:bg-secondary/90 active:scale-[0.98] font-bold text-sm flex items-center gap-1 shadow-sm transition-all" id="add-water-btn" type="button">
+<span class="material-symbols-outlined text-lg">add</span>
+<span>Log Glass</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Upcoming Doctor Appointment High Priority Banner -->
+<div class="p-5 rounded-xl bg-surface-container border-2 border-secondary/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-xl bg-secondary text-on-secondary flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-2xl">medical_information</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-xs font-bold uppercase">Tomorrow</span>
+<h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Cardiology Check-up with Dr. Robert Chen</h4>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Tomorrow at 2:00 PM • Memorial Heart Pavilion, Suite 304</p>
+<p class="font-label-sm text-label-sm text-primary font-bold flex items-center gap-1.5 mt-1">
+<span class="material-symbols-outlined text-base">directions_car</span>
+                    Transport confirmed via SilverRide at 1:15 PM (Door-to-door escort)
+                  </p>
+</div>
+</div>
+<button class="min-h-[48px] px-6 py-2.5 rounded-xl bg-surface-container-lowest text-secondary border border-secondary font-bold text-sm hover:bg-surface-container-high transition-colors whitespace-nowrap" type="button">
+                Review Ride &amp; Prep
+              </button>
+</div>
+</div>
+</section>
+<!-- RIGHT COLUMN: Family & Care Circle Activity Stream (4 Columns on XL) -->
+<aside aria-label="Family and Care Circle" class="xl:col-span-4 space-y-6">
+<!-- Care Circle Card -->
+<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 warm-card-shadow p-6" id="carecircle">
+<div class="flex items-center justify-between mb-5 pb-3 border-b border-outline-variant/20">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-3xl text-primary material-symbols-fill">diversity_1</span>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface">My Care Circle</h3>
+</div>
+<span class="font-label-sm text-label-sm text-primary font-bold flex items-center gap-1">
+<span class="w-2.5 h-2.5 rounded-full bg-primary"></span> 3 Active
+              </span>
+</div>
+<!-- Caregivers List -->
+<div class="space-y-4">
+<!-- Primary Caregiver: Sarah Jenkins -->
+<div class="p-4 rounded-xl bg-surface-container-low border border-primary/20 relative">
+<div class="flex items-start gap-3.5">
+<div class="relative">
+<img class="w-14 h-14 rounded-full object-cover border-2 border-primary" data-alt="A warm, candid photographic portrait of an attentive middle-aged daughter smiling gently at the camera, wearing an approachable cream knit sweater in natural daylight. The lighting is soft and cheerful with subtle green foliage in the background, creating a reassuring sense of family safety." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhydElBZWhInbE7iOkt42Kcp80-zGGHG4vt2OVJSkc__Wtj9R4D5zTBWYoz4kusmM7ehnFL8V05BIOCjBLXggRf7xFtCAuA51tk-Z0HC7DtrQkdCsTC3MysgyEFlIMM_Bx9AcGJtR2YoXBQznWJH1MJGovPmEe5W1HCQVFrAsomPH6pf-BziCUDkQT2wKBVsaBlvHn2fsls7sAlY_zUz35AGpXwGSEaFy8JC3Zqxk"/>
+<span class="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-primary border-2 border-surface-container-lowest" title="Active now"></span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Sarah Jenkins</h4>
+<span class="px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed text-xs font-bold">Daughter</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Primary Caregiver</p>
+<p class="font-label-sm text-label-sm text-primary font-semibold mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-base">visibility</span>
+                      Viewed medication log at 8:15 AM
+                    </p>
+</div>
+</div>
+<!-- 1-Click Audio / Video Call Buttons -->
+<div class="mt-4 pt-3 border-t border-outline-variant/30 flex items-center gap-2">
+<button class="flex-1 min-h-[48px] bg-primary hover:bg-on-primary-fixed-variant text-on-primary rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98]" type="button">
+<span class="material-symbols-outlined text-xl material-symbols-fill">call</span>
+<span>Call Sarah</span>
+</button>
+<button class="w-12 h-12 rounded-xl bg-surface-container-lowest hover:bg-surface-container border border-outline-variant/40 text-primary flex items-center justify-center transition-colors" title="Video Call Sarah" type="button">
+<span class="material-symbols-outlined text-xl">videocam</span>
+</button>
+</div>
+</div>
+<!-- Nurse Elena Vance -->
+<div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
+<div class="flex items-start gap-3.5">
+<div class="relative">
+<img class="w-14 h-14 rounded-full object-cover border-2 border-secondary" data-alt="A professional, compassionate senior-care visiting nurse in teal healthcare scrubs smiling warmly against a bright, modern clinic backdrop. The photograph is shot with soft high-key studio lighting, emphasizing clean clinical trust, approachability, and calm safety." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkD1r5yQyOqZHLXjAoJ3uOXgZuCNtBGXluQQdZQvzD1210DXL3MigJXhGwm7Nw1PqzOp0g7lkz7YkWI1A9p3MtEK17awTQnFfjHXaKqYxoH3xDTFgFkXPomD4C7CcAB5nasVckrvRVCr5zva3KomKuVnJudUrSQ8gKLVx3aWfIe2B4etO-MPhpjIjNd4B8aRV6fDW3ehPK9kaRcjUneq0c4i7rXU46aarT5ohHgzs"/>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Elena Vance, RN</h4>
+<span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-xs font-bold">Nurse</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Visiting Health Nurse</p>
+<p class="font-label-sm text-label-sm text-secondary font-medium mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-base">event</span>
+                      Next visit: Tomorrow at 10:30 AM
+                    </p>
+</div>
+</div>
+<div class="mt-3 flex items-center gap-2">
+<button class="w-full min-h-[44px] bg-surface-container-lowest hover:bg-surface-container text-secondary border border-secondary/40 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 transition-colors" type="button">
+<span class="material-symbols-outlined text-lg">chat</span>
+<span>Send Note to Nurse</span>
+</button>
+</div>
+</div>
+<!-- Doctor Robert Chen -->
+<div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
+<div class="flex items-start gap-3.5">
+<div class="w-14 h-14 rounded-full bg-surface-container-lowest border-2 border-outline-variant flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-3xl">stethoscope</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Dr. Robert Chen</h4>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant text-xs font-bold">MD</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Cardiologist (St. Jude Medical)</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-base">phone</span>
+                      Clinic: (555) 234-8901
+                    </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Family Notes / Daily Message Notice Board -->
+<div class="bg-surface-container-lowest rounded-2xl border border-tertiary/20 warm-card-shadow p-6">
+<div class="flex items-center gap-3 mb-4">
+<span class="w-10 h-10 rounded-xl bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl material-symbols-fill">favorite</span>
+</span>
+<div>
+<h3 class="font-headline-sm text-headline-sm font-bold text-on-surface">Daily Family Note</h3>
+<span class="font-body-md text-body-md text-on-surface-variant">Left at 9:02 AM today</span>
+</div>
+</div>
+<!-- Sticky Note Style Card -->
+<div class="p-5 rounded-xl bg-tertiary-fixed/30 border border-tertiary/30 relative">
+<span class="material-symbols-outlined text-4xl text-tertiary/20 absolute right-3 top-3">format_quote</span>
+<p class="font-headline-sm text-headline-sm text-on-surface font-semibold italic leading-relaxed">
+                "Mom, don't forget to drink plenty of water after your afternoon walk! I'm bringing over homemade chicken soup at 5:30 PM. Love you bunches!"
+              </p>
+<div class="mt-3 flex items-center justify-between">
+<span class="font-label-md text-label-md text-tertiary font-bold">— Sarah ❤️</span>
+<button class="text-xs font-bold text-primary hover:underline flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-sm">reply</span> Reply "Thank you"
+                </button>
+</div>
+</div>
+</div>
+<!-- Quick Senior Safety Tips -->
+<div class="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/30 flex items-center gap-4">
+<div class="w-12 h-12 rounded-xl bg-primary-fixed text-on-primary-fixed flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-2xl">tips_and_updates</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg font-bold text-on-surface">Pill Tip of the Day</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">Always take Metformin with meals to protect your stomach lining and keep energy steady.</p>
+</div>
+</div>
+</aside>
+</div>
+</main>
+</div>
+<!-- Micro-interactions Script (Accessibility text scale, Dose completion, Hydration counter) -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Font Sizing Toggle
+      let currentScale = 1;
+      const htmlEl = document.documentElement;
+      const btnIncrease = document.getElementById('font-increase');
+      const btnDecrease = document.getElementById('font-decrease');
+
+      if (btnIncrease && btnDecrease) {
+        btnIncrease.addEventListener('click', () => {
+          if (currentScale < 1.25) {
+            currentScale += 0.08;
+            htmlEl.style.fontSize = `${currentScale * 100}%`;
+          }
+        });
+        btnDecrease.addEventListener('click', () => {
+          if (currentScale > 0.9) {
+            currentScale -= 0.08;
+            htmlEl.style.fontSize = `${currentScale * 100}%`;
+          }
+        });
+      }
+
+      // Read Aloud Simulation
+      const readBtn = document.getElementById('read-aloud-btn');
+      if (readBtn) {
+        readBtn.addEventListener('click', () => {
+          if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const textToRead = "Good morning Margaret. You have three out of five medications completed today. Your Metformin 500 milligram tablet is due right now with your afternoon warm meal and a full glass of water.";
+            const utterance = new SpeechSynthesisUtterance(textToRead);
+            utterance.rate = 0.9;
+            utterance.pitch = 1.0;
+            window.speechSynthesis.speak(utterance);
+          } else {
+            alert("Audio narration: You have 3 out of 5 medications completed today. Metformin 500mg is due right now with lunch.");
+          }
+        });
+      }
+
+      // Mark Taken Button Interaction
+      const markBtn = document.getElementById('mark-taken-btn');
+      if (markBtn) {
+        markBtn.addEventListener('click', () => {
+          markBtn.classList.remove('bg-primary', 'hover:bg-on-primary-fixed-variant');
+          markBtn.classList.add('bg-surface-container-high', 'text-primary', 'cursor-default');
+          markBtn.innerHTML = `
+            <span class="material-symbols-outlined text-3xl text-primary material-symbols-fill">check_circle</span>
+            <span>Recorded as Taken Just Now!</span>
+          `;
+          
+          // Reassuring feedback
+          const announcement = document.createElement('div');
+          announcement.className = "fixed bottom-8 right-8 bg-primary text-on-primary px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 z-50 animate-bounce";
+          announcement.innerHTML = `
+            <span class="material-symbols-outlined text-3xl material-symbols-fill">verified</span>
+            <span class="font-headline-sm text-headline-sm font-bold">Dose logged! Sarah has been notified.</span>
+          `;
+          document.body.appendChild(announcement);
+          setTimeout(() => announcement.remove(), 4000);
+        });
+      }
+
+      // Hydration Counter Increment
+      const addWaterBtn = document.getElementById('add-water-btn');
+      const hydrationText = document.getElementById('hydration-count');
+      let currentGlasses = 4;
+      if (addWaterBtn && hydrationText) {
+        addWaterBtn.addEventListener('click', () => {
+          if (currentGlasses < 8) {
+            currentGlasses++;
+            hydrationText.innerHTML = `${currentGlasses} of 6 <span class="font-label-sm text-sm font-normal text-on-surface-variant">Glasses</span>`;
+          }
+        });
+      }
+    });
+  </script>
+</body></html>
