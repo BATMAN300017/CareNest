@@ -17,7 +17,7 @@
     "worker:dev": "tsx src/jobs/workers/index.ts"
   },
   "dependencies": {
-    "@google/genai": "^0.1.1",
+    "@google/generative-ai": "^0.11.0",
     "@hookform/resolvers": "^3.3.4",
     "@prisma/client": "^5.14.0",
     "@radix-ui/react-dialog": "^1.0.5",
@@ -26,6 +26,7 @@
     "@radix-ui/react-tooltip": "^1.0.7",
     "@tanstack/react-query": "^5.40.0",
     "argon2": "^0.40.1",
+    "bcryptjs": "^2.4.3",
     "bullmq": "^5.7.8",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
@@ -52,11 +53,15 @@
   "devDependencies": {
     "@playwright/test": "^1.44.1",
     "@testing-library/react": "^15.0.7",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.12.12",
+    "@types/pg": "^8.23.1",
     "@types/react": "^18.3.2",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.19",
+    "pg": "^8.23.1",
+    "pg-mem": "^3.0.14",
     "postcss": "^8.4.38",
     "prisma": "^5.14.0",
     "tailwindcss": "^3.4.3",
