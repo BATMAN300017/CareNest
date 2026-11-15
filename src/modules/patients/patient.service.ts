@@ -296,9 +296,9 @@ export class PatientService {
       nextAppointment: nextAppointment
         ? {
             id: nextAppointment.id,
-            doctorName: nextAppointment.doctor.fullName,
-            specialty: nextAppointment.doctor.specialty,
-            clinicName: nextAppointment.doctor.clinicName,
+            doctorName: nextAppointment.doctorName || nextAppointment.doctor?.fullName || "Doctor",
+            specialty: nextAppointment.specialty || nextAppointment.doctor?.specialty || "General Practice",
+            clinicName: nextAppointment.clinicName || nextAppointment.doctor?.clinicName || "Clinic",
             appointmentDatetime: nextAppointment.appointmentDatetimeUtc,
             locationAddress: nextAppointment.locationAddress,
             transportBooked: nextAppointment.transportBooked,

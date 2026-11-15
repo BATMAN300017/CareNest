@@ -10,6 +10,33 @@ export const CreateMedicationScheduleSchema = z.object({
   doseQuantity: z.number().positive().default(1.0),
   gracePeriodMinutes: z.number().int().min(15).max(240).default(60),
   reminderLeadMinutes: z.number().int().min(0).max(60).default(15),
+  startDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+    message: "Invalid start date format (YYYY-MM-DD)",
+  }).optional(),
+  endDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+    message: "Invalid end date format (YYYY-MM-DD)",
+  }).optional().nullable(),
+  timezone: z.string().optional(),
+});
+
+export const UpdateMedicationScheduleSchema = z.object({
+  frequencyType: z.enum(["DAILY", "INTERVAL_DAYS", "SPECIFIC_WEEKDAYS", "PRN_AS_NEEDED"]).optional(),
+  intervalDays: z.number().int().min(1).optional(),
+  daysOfWeek: z.array(z.number().int().min(0).max(6)).optional(),
+  timeOfDayCategory: z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT"]).optional(),
+  scheduledTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Scheduled time must be in HH:mm format (e.g. 08:00, 13:00)").optional(),
+  mealRelation: z.enum(["BEFORE_MEAL", "WITH_MEAL", "AFTER_MEAL", "EMPTY_STOMACH", "NO_RESTRICTION"]).optional(),
+  doseQuantity: z.number().positive().optional(),
+  gracePeriodMinutes: z.number().int().min(15).max(240).optional(),
+  reminderLeadMinutes: z.number().int().min(0).max(60).optional(),
+  startDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+    message: "Invalid start date format (YYYY-MM-DD)",
+  }).optional().nullable(),
+  endDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+    message: "Invalid end date format (YYYY-MM-DD)",
+  }).optional().nullable(),
+  timezone: z.string().optional(),
+  isActive: z.boolean().optional(),
 });
 
 export const CreateMedicationSchema = z.object({
@@ -24,7 +51,9 @@ export const CreateMedicationSchema = z.object({
   pillColor: z.string().optional(),
   pillShape: z.string().optional(),
   indication: z.string().optional(),
+  specialPrecautions: z.string().optional(),
   prescribingDoctorId: z.string().uuid().optional(),
+  prescribingDoctorName: z.string().optional(),
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: "Invalid start date format (YYYY-MM-DD)",
   }),
@@ -39,6 +68,39 @@ export const CreateMedicationSchema = z.object({
   schedules: z.array(CreateMedicationScheduleSchema).min(1, "At least one intake schedule is required"),
 });
 
+export const UpdateMedicationSchema = z.object({
+  brandName: z.string().min(1).optional(),
+  genericName: z.string().min(1).optional(),
+  rxNormCode: z.string().optional().nullable(),
+  dosageForm: z.enum(["TABLET", "CAPSULE", "LIQUID", "INHALER", "INJECTION", "PATCH", "DROPS"]).optional(),
+  strength: z.string().min(1).optional(),
+  route: z.string().optional(),
+  instructions: z.string().min(1).optional(),
+  pillAppearance: z.string().min(1).optional(),
+  pillColor: z.string().optional().nullable(),
+  pillShape: z.string().optional().nullable(),
+  indication: z.string().optional().nullable(),
+  specialPrecautions: z.string().optional().nullable(),
+  prescribingDoctorId: z.string().uuid().optional().nullable(),
+  prescribingDoctorName: z.string().optional().nullable(),
+  startDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+    message: "Invalid start date format (YYYY-MM-DD)",
+  }).optional(),
+  endDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+    message: "Invalid end date format (YYYY-MM-DD)",
+  }).optional().nullable(),
+  isActive: z.boolean().optional(),
+});
+
+export const DiscontinueMedicationSchema = z.object({
+  reason: z.string().min(3, "Reason for discontinuing or archiving medication is required"),
+});
+
+export const FilterMedicationSchema = z.object({
+  status: z.enum(["active", "discontinued", "all"]).default("active"),
+  search: z.string().optional(),
+});
+
 export const UpdateMedicationStockSchema = z.object({
   quantityChange: z.number().int(),
   reason: z.enum(["REFILL", "INVENTORY_CORRECTION", "DAMAGE_DISCARD"]),
@@ -47,5 +109,9 @@ export const UpdateMedicationStockSchema = z.object({
 });
 
 export type CreateMedicationInput = z.infer<typeof CreateMedicationSchema>;
+export type UpdateMedicationInput = z.infer<typeof UpdateMedicationSchema>;
+export type DiscontinueMedicationInput = z.infer<typeof DiscontinueMedicationSchema>;
 export type CreateMedicationScheduleInput = z.infer<typeof CreateMedicationScheduleSchema>;
+export type UpdateMedicationScheduleInput = z.infer<typeof UpdateMedicationScheduleSchema>;
 export type UpdateMedicationStockInput = z.infer<typeof UpdateMedicationStockSchema>;
+export type FilterMedicationInput = z.infer<typeof FilterMedicationSchema>;

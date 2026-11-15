@@ -6,7 +6,7 @@ import { AdherenceService } from "@/modules/adherence/adherence.service";
 
 export const GET = handleApiRoute(async (request: NextRequest, { params }: { params: { patientId: string } }) => {
   const user = await authenticateRequest(request);
-  await verifyPatientAccess(params.patientId, user);
+  await verifyPatientAccess(params.patientId, user, "canViewRecords");
 
   const { searchParams } = new URL(request.url);
   const dateStr = searchParams.get("date");

@@ -362,9 +362,19 @@ Standard Success Response Envelope:
 
 ## 4. Medication Management (`/api/v1/patients/:patientId/medications`)
 
-### 4.1 Create Medication & Schedule
+### 4.1 List Medications
+- **Method / URL**: `GET /api/v1/patients/:patientId/medications`
+- **Query Parameters**:
+  - `status`: `active` (default), `discontinued`, or `all`
+  - `search`: string to search in brand name, generic name, or indication
+- **Authentication**: Bearer Token.
+- **Permissions**: Patient or Care Circle member with `canViewRecords`.
+- **Response**: `200 OK` with array of medications including active schedules, stock inventory, and prescribing doctor.
+
+### 4.2 Create Medication Prescription & Schedule
 - **Method / URL**: `POST /api/v1/patients/:patientId/medications`
-- **Permissions**: `can_manage_medications == true`.
+- **Authentication**: Bearer Token.
+- **Permissions**: `can_manage_medications == true` or Patient.
 - **Request Body**:
   ```json
   {
@@ -376,6 +386,8 @@ Standard Success Response Envelope:
     "pill_appearance": "White Oval Tablet with M 500 score",
     "pill_color": "#FFFFFF",
     "pill_shape": "OVAL",
+    "indication": "Type 2 Diabetes",
+    "special_precautions": "Take with meal to reduce GI discomfort",
     "start_date": "2026-11-01",
     "schedules": [
       {
@@ -390,16 +402,101 @@ Standard Success Response Envelope:
     "refill_threshold": 10
   }
   ```
-- **Response**: `201 Created`. Automatically queues background job to populate `dose_occurrences` for the rolling 30-day window.
+- **Response**: `201 Created`. Automatically populates rolling 30-day `dose_occurrences`.
+
+### 4.3 Get Medication by ID
+- **Method / URL**: `GET /api/v1/patients/:patientId/medications/:medicationId`
+- **Permissions**: `can_view_records == true` or Patient.
+- **Response**: `200 OK` with complete medication object, schedules, and stock.
+
+### 4.4 Update Medication
+- **Method / URL**: `PATCH /api/v1/patients/:patientId/medications/:medicationId`
+- **Permissions**: `can_manage_medications == true` or Patient.
+- **Request Body**: Partial update object (instructions, strength, pill appearance, precautions, etc.).
+- **Response**: `200 OK` with updated medication and audit log record.
+
+### 4.5 Discontinue / Archive Medication
+- **Method / URL**: `DELETE /api/v1/patients/:patientId/medications/:medicationId`
+- **Permissions**: `can_manage_medications == true` or Patient.
+- **Request Body / Query**: `{ "reason": "Switched to alternative medication by cardiologist" }`
+- **Response**: `200 OK`. Deactivates medication and schedules, removes future pending doses, and preserves all historical adherence records.
+
+---
+
+## 4.6 Medication Schedules (`/api/v1/patients/:patientId/medications/:medicationId/schedules`)
+
+### 4.6.1 List Schedules for Medication
+- **Method / URL**: `GET /api/v1/patients/:patientId/medications/:medicationId/schedules`
+- **Permissions**: `can_view_records == true` or Patient.
+- **Response**: `200 OK` with array of schedules.
+
+### 4.6.2 Add Schedule to Medication
+- **Method / URL**: `POST /api/v1/patients/:patientId/medications/:medicationId/schedules`
+- **Permissions**: `can_manage_medications == true` or Patient.
+- **Request Body**:
+  ```json
+  {
+    "frequency_type": "SPECIFIC_WEEKDAYS",
+    "days_of_week": [1, 3, 5],
+    "time_of_day_category": "MORNING",
+    "scheduled_time": "08:00",
+    "meal_relation": "WITH_MEAL",
+    "dose_quantity": 1.0,
+    "grace_period_minutes": 60,
+    "reminder_lead_minutes": 15
+  }
+  ```
+- **Response**: `201 Created` and generates upcoming occurrences for 30-day window.
+
+### 4.6.3 Update Schedule
+- **Method / URL**: `PATCH /api/v1/patients/:patientId/medications/:medicationId/schedules/:scheduleId`
+- **Permissions**: `can_manage_medications == true` or Patient.
+- **Response**: `200 OK`. Modifies future pending occurrences without touching past history.
+
+### 4.6.4 Deactivate Schedule
+- **Method / URL**: `DELETE /api/v1/patients/:patientId/medications/:medicationId/schedules/:scheduleId`
+- **Permissions**: `can_manage_medications == true` or Patient.
+- **Response**: `200 OK`. Cleans up unconfirmed future pending doses.
 
 ---
 
 ## 5. Adherence & Dose Confirmation (`/api/v1/patients/:patientId/doses`)
 
-### 5.1 Confirm Dose (Mark as Taken)
+### 5.1 Get Daily Schedule (Dashboard-Ready)
+- **Method / URL**: `GET /api/v1/patients/:patientId/doses/daily?date=YYYY-MM-DD`
+- **Permissions**: `can_view_records == true` or Patient.
+- **Response**: `200 OK`
+  ```json
+  {
+    "date": "2026-11-15",
+    "timezone": "America/New_York",
+    "progress": {
+      "total_doses": 4,
+      "completed_doses": 2,
+      "percent": 50
+    },
+    "sections": [
+      {
+        "category": "MORNING",
+        "status": "COMPLETED",
+        "items": [ ... ]
+      },
+      {
+        "category": "AFTERNOON",
+        "status": "DUE_NOW",
+        "items": [ ... ]
+      },
+      { "category": "EVENING", "status": "UPCOMING", "items": [ ... ] },
+      { "category": "NIGHT", "status": "UPCOMING", "items": [ ... ] }
+    ]
+  }
+  ```
+
+### 5.2 Confirm Dose (Mark as Taken)
 - **Method / URL**: `POST /api/v1/patients/:patientId/doses/:doseId/confirm`
 - **Headers**: `Idempotency-Key: <unique_client_generated_uuid>`
-- **Purpose**: Marks dose taken with zero duplicate risk.
+- **Permissions**: Patient or Caregiver with `can_manage_medications == true`.
+- **Purpose**: Marks dose taken with zero duplicate risk, decrements stock, checks refill threshold.
 - **Request Body**:
   ```json
   {
@@ -408,21 +505,103 @@ Standard Success Response Envelope:
     "notes": "No discomfort reported"
   }
   ```
-- **Response**: `200 OK`
+- **Response**: `200 OK` with remaining stock and current streak days.
+
+### 5.3 Skip Dose (Mark as Skipped)
+- **Method / URL**: `POST /api/v1/patients/:patientId/doses/:doseId/skip`
+- **Permissions**: Patient or Caregiver with `can_manage_medications == true`.
+- **Purpose**: Marks dose skipped with clinical reasoning. Does not decrement stock.
+- **Request Body**:
   ```json
   {
-    "dose_occurrence_id": "dose_uuid",
-    "status": "TAKEN",
-    "confirmed_at": "2026-11-15T13:12:00.000Z",
-    "stock_remaining": 59,
-    "adherence_streak_days": 14
+    "reason": "Patient experiencing nausea; physician advised holding dose until evening"
   }
   ```
+- **Response**: `200 OK` with updated status `SKIPPED`.
 
-### 5.2 Snooze Dose Reminder
+### 5.4 Snooze Dose Reminder
 - **Method / URL**: `POST /api/v1/patients/:patientId/doses/:doseId/snooze`
 - **Request Body**: `{ "snooze_minutes": 15 }`
 - **Response**: `200 OK` with updated `snoozed_until_utc`.
+
+### 5.5 Adherence Report & Analytics
+- **Method / URL**: `GET /api/v1/patients/:patientId/adherence/report`
+- **Query Parameters**: `startDate`, `endDate`, `medicationId`
+- **Permissions**: `can_view_records == true` or Patient.
+- **Purpose**: Calculates overall adherence percentage across eligible past doses (excluding future pending doses), streak days, per-medication breakdown, and clinical disclaimer.
+- **Response**: `200 OK`
+  ```json
+  {
+    "summary": {
+      "adherence_rate": 92,
+      "streak_days": 14,
+      "total_eligible_doses": 60,
+      "taken_count": 55,
+      "skipped_count": 3,
+      "missed_count": 2
+    },
+    "medication_breakdown": [ ... ],
+    "disclaimer": "This medication adherence summary is provided for wellness and tracking purposes only and does not constitute a medical diagnosis or formal clinical evaluation."
+  }
+  ```
+
+---
+
+## 5.6 Doctor Appointment Management (`/api/v1/patients/:patientId/appointments`)
+
+### 5.6.1 List Appointments
+- **Method / URL**: `GET /api/v1/patients/:patientId/appointments`
+- **Query Parameters**:
+  - `status`: `SCHEDULED`, `CONFIRMED`, `COMPLETED`, `CANCELLED`, `RESCHEDULED`
+  - `upcoming`: `true` or `false`
+  - `startDate`, `endDate`
+- **Permissions**: `can_view_records == true` or Patient.
+- **Response**: `200 OK` with array of appointments.
+
+### 5.6.2 Schedule Appointment
+- **Method / URL**: `POST /api/v1/patients/:patientId/appointments`
+- **Permissions**: `can_manage_appointments == true` or Patient.
+- **Request Body**:
+  ```json
+  {
+    "doctor_id": "doc_uuid",
+    "doctor_name": "Dr. Robert Chen",
+    "specialty": "Cardiology",
+    "clinic_name": "Metro Heart Institute",
+    "title": "Quarterly Cardiac Review",
+    "appointment_datetime": "2026-11-20T14:00:00Z",
+    "timezone": "America/New_York",
+    "duration_minutes": 45,
+    "location_address": "100 Medical Center Blvd, Suite 400",
+    "transport_booked": true,
+    "transport_service_name": "SilverRide Senior Escort",
+    "transport_notes": "Wheelchair ramp vehicle requested for 1:15 PM pickup",
+    "preparation_instructions": "Fast for 4 hours prior to blood draw"
+  }
+  ```
+- **Response**: `201 Created`.
+
+### 5.6.3 Get Appointment by ID
+- **Method / URL**: `GET /api/v1/patients/:patientId/appointments/:appointmentId`
+- **Permissions**: `can_view_records == true` or Patient.
+- **Response**: `200 OK` with full appointment details.
+
+### 5.6.4 Update Appointment
+- **Method / URL**: `PATCH /api/v1/patients/:patientId/appointments/:appointmentId`
+- **Permissions**: `can_manage_appointments == true` or Patient.
+- **Response**: `200 OK` with updated appointment and audit trail.
+
+### 5.6.5 Cancel Appointment
+- **Method / URL**: `DELETE /api/v1/patients/:patientId/appointments/:appointmentId` or `POST .../cancel`
+- **Permissions**: `can_manage_appointments == true` or Patient.
+- **Request Body**: `{ "reason": "Rescheduled by clinic due to physician emergency" }`
+- **Response**: `200 OK` with status `CANCELLED`.
+
+### 5.6.6 Get Upcoming Appointments (Reminders Preparation)
+- **Method / URL**: `GET /api/v1/patients/:patientId/appointments/upcoming?days=7`
+- **Permissions**: `can_view_records == true` or Patient.
+- **Purpose**: Returns upcoming appointments formatted for automated notifications, with `isWithin24Hours` and `isWithin48Hours` alert flags.
+- **Response**: `200 OK`.
 
 ---
 

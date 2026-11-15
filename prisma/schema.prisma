@@ -303,26 +303,28 @@ model Invitation {
 }
 
 model Medication {
-  id                  String     @id @default(uuid())
-  patientId           String     @map("patient_id")
-  brandName           String     @map("brand_name")
-  genericName         String     @map("generic_name")
-  rxNormCode          String?    @map("rx_norm_code")
-  dosageForm          DosageForm @map("dosage_form")
-  strength            String
-  route               String     @default("ORAL")
-  instructions        String
-  pillAppearance      String     @map("pill_appearance")
-  pillColor           String?    @map("pill_color")
-  pillShape           String?    @map("pill_shape")
-  indication          String?
-  prescribingDoctorId String?    @map("prescribing_doctor_id")
-  startDate           DateTime   @map("start_date") @db.Date
-  endDate             DateTime?  @map("end_date") @db.Date
-  isActive            Boolean    @default(true) @map("is_active")
-  discontinuedReason  String?    @map("discontinued_reason")
-  createdAt           DateTime   @default(now()) @map("created_at")
-  updatedAt           DateTime   @updatedAt @map("updated_at")
+  id                    String     @id @default(uuid())
+  patientId             String     @map("patient_id")
+  brandName             String     @map("brand_name")
+  genericName           String     @map("generic_name")
+  rxNormCode            String?    @map("rx_norm_code")
+  dosageForm            DosageForm @map("dosage_form")
+  strength              String
+  route                 String     @default("ORAL")
+  instructions          String
+  pillAppearance        String     @map("pill_appearance")
+  pillColor             String?    @map("pill_color")
+  pillShape             String?    @map("pill_shape")
+  indication            String?
+  specialPrecautions    String?    @map("special_precautions")
+  prescribingDoctorId   String?    @map("prescribing_doctor_id")
+  prescribingDoctorName String?    @map("prescribing_doctor_name")
+  startDate             DateTime   @map("start_date") @db.Date
+  endDate               DateTime?  @map("end_date") @db.Date
+  isActive              Boolean    @default(true) @map("is_active")
+  discontinuedReason    String?    @map("discontinued_reason")
+  createdAt             DateTime   @default(now()) @map("created_at")
+  updatedAt             DateTime   @updatedAt @map("updated_at")
 
   patient           Patient              @relation(fields: [patientId], references: [id], onDelete: Cascade)
   prescribingDoctor Doctor?              @relation(fields: [prescribingDoctorId], references: [id])
@@ -348,6 +350,9 @@ model MedicationSchedule {
   doseQuantity        Decimal           @default(1.0) @map("dose_quantity") @db.Decimal(4, 2)
   gracePeriodMinutes  Int               @default(60) @map("grace_period_minutes")
   reminderLeadMinutes Int               @default(15) @map("reminder_lead_minutes")
+  startDate           DateTime?         @map("start_date") @db.Date
+  endDate             DateTime?         @map("end_date") @db.Date
+  timezone            String?
   isActive            Boolean           @default(true) @map("is_active")
 
   medication      Medication       @relation(fields: [medicationId], references: [id], onDelete: Cascade)
@@ -370,6 +375,7 @@ model DoseOccurrence {
   status            DoseStatus        @default(PENDING)
   snoozedUntilUtc   DateTime?         @map("snoozed_until_utc")
   snoozeCount       Int               @default(0) @map("snooze_count")
+  skippedReason     String?           @map("skipped_reason")
   escalationTier    Int               @default(0) @map("escalation_tier")
   escalatedAtUtc    DateTime?         @map("escalated_at_utc")
   createdAt         DateTime          @default(now()) @map("created_at")
@@ -443,26 +449,33 @@ model Doctor {
 }
 
 model Appointment {
-  id                    String            @id @default(uuid())
-  patientId             String            @map("patient_id")
-  doctorId              String            @map("doctor_id")
-  title                 String
-  appointmentDatetimeUtc DateTime         @map("appointment_datetime_utc")
-  expectedLocalDatetime DateTime          @map("expected_local_datetime")
-  durationMinutes       Int               @default(45) @map("duration_minutes")
-  locationAddress       String            @map("location_address")
-  status                AppointmentStatus @default(SCHEDULED)
-  transportBooked       Boolean           @default(false) @map("transport_booked")
-  transportServiceName  String?           @map("transport_service_name")
-  transportPickupTime   DateTime?         @map("transport_pickup_time")
-  transportNotes        String?           @map("transport_notes")
-  visitNotes            String?           @map("visit_notes")
-  followUpInstructions  String?           @map("follow_up_instructions")
-  createdAt             DateTime          @default(now()) @map("created_at")
-  updatedAt             DateTime          @updatedAt @map("updated_at")
+  id                      String            @id @default(uuid())
+  patientId               String            @map("patient_id")
+  doctorId                String?           @map("doctor_id")
+  title                   String
+  appointmentDatetimeUtc  DateTime          @map("appointment_datetime_utc")
+  expectedLocalDatetime   DateTime          @map("expected_local_datetime")
+  timezone                String            @default("UTC")
+  durationMinutes         Int               @default(45) @map("duration_minutes")
+  locationAddress         String            @map("location_address")
+  doctorName              String?           @map("doctor_name")
+  specialty               String?
+  clinicName              String?           @map("clinic_name")
+  contactPhone            String?           @map("contact_phone")
+  status                  AppointmentStatus @default(SCHEDULED)
+  transportBooked         Boolean           @default(false) @map("transport_booked")
+  transportServiceName    String?           @map("transport_service_name")
+  transportPickupTime     DateTime?         @map("transport_pickup_time")
+  transportNotes          String?           @map("transport_notes")
+  visitNotes              String?           @map("visit_notes")
+  preparationInstructions String?           @map("preparation_instructions")
+  followUpInstructions    String?           @map("follow_up_instructions")
+  cancellationReason      String?           @map("cancellation_reason")
+  createdAt               DateTime          @default(now()) @map("created_at")
+  updatedAt               DateTime          @updatedAt @map("updated_at")
 
   patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  doctor  Doctor  @relation(fields: [doctorId], references: [id])
+  doctor  Doctor? @relation(fields: [doctorId], references: [id])
 
   @@index([patientId, appointmentDatetimeUtc])
   @@map("appointments")
